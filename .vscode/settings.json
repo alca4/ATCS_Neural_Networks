@@ -1,0 +1,16 @@
+{
+   "files.associations": {
+      "*.cpp": "cpp",
+      "vector": "cpp",
+      "iostream": "cpp",
+      "complex": "cpp",
+      "valarray": "cpp",
+      "chrono": "cpp",
+      "ostream": "cpp",
+      "deque": "cpp",
+      "forward_list": "cpp",
+      "list": "cpp",
+      "string": "cpp",
+      "new": "cpp"
+   }
+}
