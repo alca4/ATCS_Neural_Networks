@@ -11,6 +11,8 @@
       "forward_list": "cpp",
       "list": "cpp",
       "string": "cpp",
-      "new": "cpp"
+      "new": "cpp",
+      "ratio": "cpp",
+      "random": "cpp"
    }
 }
