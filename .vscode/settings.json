@@ -13,6 +13,10 @@
       "string": "cpp",
       "new": "cpp",
       "ratio": "cpp",
-      "random": "cpp"
+      "random": "cpp",
+      "__locale": "cpp",
+      "regex": "cpp",
+      "__string": "cpp",
+      "ios": "cpp"
    }
 }

@@ -19,7 +19,9 @@ load weights?
 */
 
 #include <iostream>
+#include <fstream>
 #include <cmath>
+#include <vector>
 using namespace std;
 
 // Constants:
@@ -35,7 +37,7 @@ class NeuralNetwork
    // LAYER_SIZE[i1] stores the size of layer i1
    int* LAYER_SIZE;
    // 1 if training, 0 if testing
-   bool IS_TRAIN;
+   bool IS_TRAINING;
    // number of test cases
    int NUM_TESTS;
    // lower and upper bounds for weights
@@ -47,6 +49,8 @@ class NeuralNetwork
    double LAMBDA;
    // 0 if sigmoid, nothing else is valid yet
    int THRESHOLD_FUNCTION_TYPE;
+   int MAX_ITERATIONS;
+   double LOSS_THRESHOLD;
 
    // values of the activations, activations[i1][i2] stores activation i2 at layer i1 (0-indexed)
    double** activations;
@@ -60,15 +64,23 @@ class NeuralNetwork
                  int numTests, double wlb, double wub, int rngSeed,
                  bool isLoading, double lambda, bool thresFuncType) 
    {
-      cout << "The model has the following configuration errors:\n";
+      cout << "########################################" << endl;
+      cout << "Attempting to configure model\n\n";
       if (setConfigParameters(numLayers, layerSzs, isTraining,
                                numTests, wlb, wub, isLoading, 
                                lambda, thresFuncType))
       {
          cout << "Model configured successfully!\n";
-         // printConfigParameters();
-         // allocateMemory();
-         // initializeArrays();
+         cout << "########################################" << endl;
+         if (printConfigParameters())
+         {
+            cout << "########################################" << endl;
+            allocateMemory();
+            cout << "Memory allocated\n";
+            initializeArrays();
+            cout << "Weights intialized\n";
+            cout << "########################################" << endl;
+         }
       }
       else 
       {
@@ -92,44 +104,49 @@ class NeuralNetwork
 
       if (numLayers != 3) 
       {
-         cout << "This neural network does not support more than 3 layers\n";
+         cout << "ERROR: This neural network does not support more or less than 3 layers\n";
          modelValid = 0;
       }
       else NUM_LAYERS = numLayers;
 
-      bool hasInvalidLayerSz = 0;
-      for (int i = 0; i < numLayers; i++) 
+      vector<int> invalidLayers;
+      for (int i1 = 0; i1 < numLayers; i1++) 
       {
-         if (layerSzs[i] <= 0)
+         if (layerSzs[i1] <= 0)
          {
-            hasInvalidLayerSz = 1;
+            invalidLayers.push_back(i1);
          }
       }
 
-      if (layerSzs[numLayers - 1] != 1)
+      if (invalidLayers.size() > 0 || layerSzs[numLayers - 1] != 1)
       {
-         cout << "There may only be one output activation\n";
-         modelValid = 0;
-      }
-      else if (hasInvalidLayerSz)
-      {
-         cout << "At least one layer has an invalid size (<= 0)\n";
-         modelValid = 0;
+         if (invalidLayers.size() > 0)
+         {
+            cout << "ERROR: The following layers have invalid sizes (<= 0): ";
+            for (int badLayer : invalidLayers) cout << badLayer << " ";
+            cout << "\n";
+            modelValid = 0;
+         }
+         if (layerSzs[numLayers - 1] != 1)
+         {
+            cout << "ERROR: There may only be one output activation\n";
+            modelValid = 0;
+         }
       }
       else LAYER_SIZE = layerSzs;
 
-      IS_TRAIN = isTraining;
+      IS_TRAINING = isTraining;
 
       if (numTests <= 0)
       {
-         cout << "Invalid number of tests (<= 0)\n";
+         cout << "ERROR: Invalid number of tests (<= 0)\n";
          modelValid = 0;
       }
       else NUM_TESTS = numTests;
 
       if (wlb - wub > EPS)
       {
-         cout << "lower bound for weights must be <= upper bound for weights\n";
+         cout << "ERROR: Lower bound for weights must be <= upper bound for weights\n";
          modelValid = 0;
       }
       else
@@ -140,11 +157,16 @@ class NeuralNetwork
 
       IS_LOADING = isLoading;
 
-      LAMBDA = lambda;
+      if (lambda < EPS)
+      {
+         cout << "ERROR: Lambda must be positive\n";
+         modelValid = 0;
+      }
+      else LAMBDA = lambda;
 
       if (thresFuncType != 0)
       {
-         cout << "Threshold function type is invalid, can only be 0 (sigmoid)\n";
+         cout << "ERROR: Threshold function type is invalid, can only be 0 (sigmoid)\n";
          modelValid = 0;
       }
       else THRESHOLD_FUNCTION_TYPE = thresFuncType;
@@ -157,18 +179,39 @@ class NeuralNetwork
                             double lambda, bool thresFuncType) 
    */
 
-   void printConfigParameters() 
+   bool printConfigParameters() 
    {
-      cout << "Number of layers: " << NUM_LAYERS << endl;
-      cout << "Size of each layer: " << endl;
+      cout << "Printing configuration paramenters:\n\n";
 
-      cout << "Layer sizes: ";
-      for (int i1 = 0; i1 < NUM_LAYERS; i1++) 
-         cout << LAYER_SIZE[i1] << "-" [i1 == NUM_LAYERS - 1]; // 
+      cout << "Number of layers: " << NUM_LAYERS << "\n";
+
+      cout << "Size of each layer: ";
+      for (int i1 = 0; i1 < NUM_LAYERS; i1++)
+      {
+         cout << LAYER_SIZE[i1] << " ";
+      }
       cout << endl;
 
-      return;
-   }
+      cout << "Current mode: ";
+      if (IS_TRAINING) cout << "training\n";
+      else cout << "testing\n";
+
+      cout << "Number of tests: " << NUM_TESTS << "\n";
+
+      cout << "Weights will be initialied between " << WLB << " and " << WUB << "\n";
+
+      cout << "Lambda is " << LAMBDA << "\n";
+
+      cout << "The threshold function used will be: ";
+      if (THRESHOLD_FUNCTION_TYPE == 0) cout << "sigmoid\n";
+
+      cout << endl;
+      cout << "Is this the correct model? [y/n]" << endl;
+      string input;
+      cin >> input;
+      if (input == "n") return 0;
+      else return 1;
+   } // bool printConfigParameters()
 
    /*
    * Initializes arrays based on the following dimensions:
@@ -234,11 +277,12 @@ class NeuralNetwork
       return;
    } // void initializeArrays()
 
-   void printWeights() {
-      cout << "Weights: " << endl;
+   void printWeights() 
+   {
+      cout << "Weights:\n";
       for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
       {
-         cout << "From layer " << i1 << ": " << endl;
+         cout << "From layer " << i1 << ":\n";
          for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
          {
             cout << "From activation " << i2 << ": ";
@@ -246,12 +290,70 @@ class NeuralNetwork
             {
                cout << weights[i1][i2][i3] << " ";
             }
-            cout << endl;
+            cout << "\n";
          }
       }
 
       return;
    } // void printWeights()
+
+   /*
+   * Passes though the values in the input through the model
+   * As per design, 
+   * This impelentation pushes updates from layer i1 to i1 + 1, instead of pulling from i1 - 1
+   */
+   double evaluate(int testCase) 
+   {
+      ifstream fin("Tests/tc0" + to_string(testCase) + ".txt");
+      for (int i1 = 0; i1 < LAYER_SIZE[0]; i1++) fin >> activations[0][i1];
+
+      double trueValue;
+      fin >> trueValue;
+
+      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
+      {
+         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
+         {
+            for (int i3 = 0; i3 < LAYER_SIZE[i1 + 1]; i3++) 
+            {
+               activations[i1 + 1][i3] += activations[i1][i2] * weights[i1][i2][i3];
+            }
+         }
+
+         for (int i2 = 0; i2 < LAYER_SIZE[i1 + 1]; i2++) 
+         {
+            activations[i1 + 1][i2] = thresholdFunction(activations[i1 + 1][i2]);
+         }
+      }
+
+      return error(activations[NUM_LAYERS - 1][0], trueValue);
+   } // double evaluate()
+
+   // Training
+   void calculateDW(int layer)
+   {
+
+   }
+
+   void train()
+   {
+      double loss;
+      int epochs = 0;
+      do
+      {
+         for (int i1 = 1; i1 <= NUM_TESTS; i1++)
+         {
+            double error = evaluate(i1);
+            for (int i2 = NUM_LAYERS - 1; i2 >= 0; i2--)
+            {
+               calculateDW(i1);
+            }
+         }
+         epochs++;
+      } while (epochs <= MAX_ITERATIONS && loss > LOSS_THRESHOLD);
+      
+      return;
+   }
 
    // Testing
    double thresholdFunction(double val) 
@@ -272,32 +374,6 @@ class NeuralNetwork
       return 0.5 * (t - f) * (t - f);
    }
 
-   /*
-   * Passes though the values in the input through the model
-   * As per design, 
-   * This impelentation pushes updates from layer i1 to i1 + 1, instead of pulling from i1 - 1
-   */
-   double evaluate(double trueValue) 
-   {
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
-      {
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
-         {
-            for (int i3 = 0; i3 < LAYER_SIZE[i1 + 1]; i3++) 
-            {
-               activations[i1 + 1][i3] += activations[i1][i2] * weights[i1][i2][i3];
-            }
-         }
-
-         for (int i2 = 0; i2 < LAYER_SIZE[i1 + 1]; i2++) 
-         {
-            activations[i1 + 1][i2] = thresholdFunction(activations[i1 + 1][i2]);
-         }
-      }
-
-      return error(activations[NUM_LAYERS - 1][0], trueValue);
-   } // double evaluate()
-
    void loadTest(const string& FILENAME) 
    {
       // ifstream fin(FILENAME);
@@ -308,13 +384,19 @@ class NeuralNetwork
 
 int main(int argc, char* argv[]) 
 {
+   // Desyncs 
+   ios_base::sync_with_stdio(0);
+   cin.tie(NULL);
+   cout.tie(NULL);
+
    int* layerSzs = new int[3];
    layerSzs[0] = 2;
    layerSzs[1] = 3;
    layerSzs[2] = 1;
 
-   NeuralNetwork network(2, layerSzs, 0,
-                         1, -1.5, 1.5, 42, 0, 0.3, 0);
+   NeuralNetwork network(3, layerSzs, 1,
+                         4, -1.5, 1.5, 42, 0, 0.3, 0);
+   network.train();
    // if (*argv[1] == '0') network.train();
    // else network.test();
    // network.printReport();

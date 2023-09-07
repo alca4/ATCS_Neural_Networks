@@ -1,0 +1,37 @@
+// contains 
+NUM_LAYERS=3
+
+LAYER_SIZE=[2,3,1]
+
+/*
+* model is either training or testing
+*/
+MODE=train
+
+NUM_TESTS=1
+
+/*
+* lower and upper bound values for the random weight values
+* must satisfy WLB <= WUB
+*/
+WLB=-1.5
+WUB=1.5
+
+RNG_SEED=42
+
+/*
+* 'true' if weights will be loaded from file
+* 'false' if weights will be randomly intialized
+*/
+LOAD=false
+
+/*
+* learning rate
+* must satisfy LAMBDA > 0
+*/
+LAMBDA=0.3
+
+/*
+* can only be sigmoid (given by sigmoid(x) = 1/(1+exp(-x)))
+*/
+THRESHOLD_FUNCTION_TYPE=sigmoid
