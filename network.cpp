@@ -95,6 +95,13 @@ class NeuralNetwork
                  bool isLoading, double lambda, bool thresFuncType) 
    */
    
+   ~NeuralNetwork() {
+      delete LAYER_SIZE;
+      delete activations;
+      delete weights;
+      delete dweights;
+   }
+
    // private:
    bool setConfigParameters(int numLayers, int* layerSzs, bool isTraining, 
                             int numTests, double wlb, double wub, bool isLoading,
@@ -302,7 +309,7 @@ class NeuralNetwork
    * As per design, 
    * This impelentation pushes updates from layer i1 to i1 + 1, instead of pulling from i1 - 1
    */
-   double evaluate(int testCase) 
+   double evaluate(int testCase, bool printResults) 
    {
       ifstream fin("Tests/tc0" + to_string(testCase) + ".txt");
       for (int i1 = 0; i1 < LAYER_SIZE[0]; i1++) fin >> activations[0][i1];
@@ -326,13 +333,32 @@ class NeuralNetwork
          }
       }
 
-      return error(activations[NUM_LAYERS - 1][0], trueValue);
+      double e = error(activations[NUM_LAYERS - 1][0], trueValue);
+
+      if (printResults) {
+         cout << "Test case " << testCase << ":\t";
+         cout << "expected " << trueValue << ", received " << activations[NUM_LAYERS - 1][0] << "\t";
+         cout << "error is: " << e << endl;
+      }
+
+      return e;
    } // double evaluate()
 
    // Training
-   void calculateDW(int layer)
+   void calculateDWForHidden(int layer)
    {
+      for (int j = 0; j < LAYER_SIZE[layer]; j++)
+      {
 
+      }
+   }
+
+   void calculateDWForInput()
+   {
+      for (int j = 0; j < LAYER_SIZE[layer]; j++)
+      {
+
+      }
    }
 
    void train()
@@ -341,16 +367,25 @@ class NeuralNetwork
       int epochs = 0;
       do
       {
+         double curLoss = 0;
          for (int i1 = 1; i1 <= NUM_TESTS; i1++)
          {
-            double error = evaluate(i1);
-            for (int i2 = NUM_LAYERS - 1; i2 >= 0; i2--)
-            {
-               calculateDW(i1);
-            }
+            curLoss += evaluate(i1, 0);
+            calculateDWForHidden(NUM_LAYERS - 2);
+            calculateDWForInput(0);
          }
+
+         curLoss /= NUM_TESTS;
+         loss = curLoss;
          epochs++;
-      } while (epochs <= MAX_ITERATIONS && loss > LOSS_THRESHOLD);
+      } 
+      while (epochs <= MAX_ITERATIONS && loss > LOSS_THRESHOLD);
+
+      cout << "Model terminated after " << epochs << " epochs with a loss of " << loss << endl;
+      if (epochs > MAX_ITERATIONS)
+         cout << "Model terminated due to reaching maximum number of epochs (" << MAX_ITERATIONS << ")." << endl;
+      else 
+         cout << "Model terminated due to reaching low enough error <=(" << LOSS_THRESHOLD << ")." << endl;
       
       return;
    }
@@ -374,10 +409,13 @@ class NeuralNetwork
       return 0.5 * (t - f) * (t - f);
    }
 
-   void loadTest(const string& FILENAME) 
+   void test() 
    {
-      // ifstream fin(FILENAME);
-      
+      double totError = 0;
+      for (int i1 = 1; i1 <= NUM_TESTS; i1++) totError += evaluate(i1, 1);
+
+      cout << "Average error is: " << totError / NUM_TESTS << endl;
+
       return;
    }
 };
@@ -394,10 +432,10 @@ int main(int argc, char* argv[])
    layerSzs[1] = 3;
    layerSzs[2] = 1;
 
-   NeuralNetwork network(3, layerSzs, 1,
+   NeuralNetwork network(3, layerSzs, 0,
                          4, -1.5, 1.5, 42, 0, 0.3, 0);
-   network.train();
-   // if (*argv[1] == '0') network.train();
+   // network.train();
+   network.test();
    // else network.test();
    // network.printReport();
    // network.evaluate();

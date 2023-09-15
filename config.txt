@@ -1,37 +1,42 @@
-// contains 
-NUM_LAYERS=3
-
-LAYER_SIZE=[2,3,1]
-
 /*
-* model is either training or testing
+* Author: Andrew Liang
+* Date of Creation: 15/09/2023
+* Configures model
 */
-MODE=train
 
-NUM_TESTS=1
+NUM_LAYERS
+3                    // must satisfy: = 3
 
-/*
-* lower and upper bound values for the random weight values
-* must satisfy WLB <= WUB
-*/
-WLB=-1.5
-WUB=1.5
 
-RNG_SEED=42
+LAYER_SIZE
+2,3,1                // must satisfy: amount of numbers equal to NUM_LAYERS
 
-/*
-* 'true' if weights will be loaded from file
-* 'false' if weights will be randomly intialized
-*/
-LOAD=false
 
-/*
-* learning rate
-* must satisfy LAMBDA > 0
-*/
-LAMBDA=0.3
+MODE                 // determines whether model will train or test
+                     // 0: test
+                     // 1: train
+1                    // must satisfy: = 0 or 1
 
-/*
-* can only be sigmoid (given by sigmoid(x) = 1/(1+exp(-x)))
-*/
-THRESHOLD_FUNCTION_TYPE=sigmoid
+NUM_TESTS
+4                    // must satisfy: = number of files under Tests/
+
+
+WB                   // bound for random weights
+                     // first is lower bound, second is upper bound
+-1.5,1.5             // must satisfy: lb <= ub
+
+
+LOAD                 // determines where weights come from
+                     // 0: randomly initialize
+                     // 1: load from file
+0                    // must satisfy: load = 0 or 1
+
+LAMBDA                              // learning rate
+0.3                                 // must satisfy: lambda > 0
+
+THRESHOLD_FUNCTION_TYPE             
+                                    // 0: sigmoid function: 1/(1+exp(-x))
+0                                   // must satisfy: function type = 0
+
+LOSS_THRESHOLD                      // minimum loss model will achieve before quitting
+0.2                                 // must satisfy: threshold >= 0
