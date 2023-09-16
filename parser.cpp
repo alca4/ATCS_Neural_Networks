@@ -18,14 +18,28 @@ map<string, string> configureModel()
    string curLine;
    while (!cin.eof())
    {
-      getline(cin, curLine, ' ');
+      getline(cin, curLine);
 
-      if (curLine[0] != '/' && curLine[0] != '*') // remove header comments
+      if (curLine.length() > 0 && curLine[0] != '/' && curLine[0] != '*') // remove header comments
       {
-         
-      }
+         // take everything until you reach a space
+         string info;
+         int idx = 0; 
+         while (idx < (int) curLine.length() && curLine[idx] != ' ') 
+         {
+            info += curLine[idx];
+            idx++;
+         }
 
-      cout << curLine << endl;
+         if (info.length() > 0) {
+            if (param == "") param = info;
+            else 
+            {
+               inputs[param] = info;
+               param = "";
+            }
+         }
+      }
    }
 
    return inputs;

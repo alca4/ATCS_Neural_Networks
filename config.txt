@@ -38,5 +38,8 @@ THRESHOLD_FUNCTION_TYPE
                                     // 0: sigmoid function: 1/(1+exp(-x))
 0                                   // must satisfy: function type = 0
 
+MAX_ITERATIONS
+100
+
 LOSS_THRESHOLD                      // minimum loss model will achieve before quitting
 0.2                                 // must satisfy: threshold >= 0
