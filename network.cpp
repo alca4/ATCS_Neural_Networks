@@ -8,307 +8,381 @@
 * and an output layer with a single node
 */
 
-/*
-Setup parameters (Constructor deals with):
-A and B
-train/test
-number of tests
-max_iterations, learning cutoff
-range for initial weights (when randomizing)
-load weights?
-*/
-
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <vector>
 #include <random>
 #include <iomanip>
 using namespace std;
 
-// Constants:
-const double EPS = 1e-9;
+/*
+* Constants
+*/ 
+const double EPSILON = 1e-9;
+const int EXPECTED_NUM_LAYERS = 3;
+const int PRECISION = 4;
+const int ITERATION_PRINTING_FREQUENCY = 5000;
+const string CONFIG_FILE = "config.txt";
 
 /*
 * A neural network. Honestly, I don't know how this will work right now
 */
 struct NeuralNetwork 
 {
-   int NUM_LAYERS;                  // configuration parameters
-   int* LAYER_SIZE;                 // LAYER_SIZE[i1] stores the size of layer i1
-   bool IS_TRAINING;                // 1 if training, 0 if testing
-   int NUM_TESTS;                   // number of test cases
-   double WLB, WUB;                 // lower and upper bounds for weights
-   bool IS_LOADING;                 // 1 if loading weights, 0 if randomly generated
-   double LAMBDA;                   // learning rate
-   int THRESHOLD_FUNCTION_TYPE;     // 0 if sigmoid
-   int MAX_ITERATIONS;              // max iterations before stopping
-   double ERROR_THRESHOLD;          // min error to continue running
+   // not actually constants :|
+   const string TARGET = "PARAM: "; // parameter indetifier
+   const int INPUT_LAYER = 0;             // input layer is the 0st layer
+   const int HIDDEN_LAYER = 1;            // hidden layer is the 1st layer
+   const int OUTPUT_LAYER = 2;            // output layer is the 2nd layer
 
-   // values of the activations, activations[i1][i2] stores activation i2 at layer i1 (0-indexed)
+   int numLayers;                  // configuration parameters
+   int* layerSize;                 // layerSize[i1] stores the size of layer i1
+   bool isTraining;                // 1 if training, 0 if testing
+   int numTests;                   // number of test cases
+   double wlb, wub;                 // lower and upper bounds for weights
+   double lambda;                   // learning rate
+   int thresholdFunctionType;     // 0 if sigmoid
+   int maxIterations;              // max iterations before stopping
+   double errorThreshold;          // min error to continue running
+
+   /*
+   * values of the activations, activations[i1][i2] stores activation i2 at layer i1 (0-indexed)
+   */
    double** activations;
-   // values of the weights, weights[i1][i2][i3] stores the weight connecting activation i2 of layer i1 to activation i3 to layer i1 + 1
+   /*
+   * values of the weights, 
+   * weights[i1][i2][i3] stores the weight connecting activation i2 of layer i1 to activation i3 to layer i1 + 1
+   */
    double*** weights;
-   // values of the changes of weights, dweights[i1][i2][i3] stores the change to w[i1][i2][i3] the model learns
+   /*
+   * values of the changes of weights, dweights[i1][i2][i3] stores the change to w[i1][i2][i3] the model learns
+   */
    double*** dweights;
-   // values of the inputs in each test, inputValues[i1][i2] stores the i2th input of the i1th test case
+   /* 
+   * values of the inputs in each test, inputValues[i1][i2] stores the i2th input of the i1th test case
+   */
    double** inputValues;
-   // true values of each test
+   /*
+   * true values of each test
+   */
    double* trueValues;
 
-   NeuralNetwork(int numLayers, int* layerSzs, bool isTraining, 
-                 int numTests, double wlb, double wub, 
-                 bool isLoading, double lambda, bool thresFuncType,
-                 int maxIter, double errorThreshold) 
+   NeuralNetwork() 
    {
       cout << "########################################" << endl;
       cout << "Attempting to configure model" << endl << endl;
-      if (setConfigParameters(numLayers, layerSzs, isTraining,
-                               numTests, wlb, wub, isLoading, 
-                               lambda, thresFuncType, maxIter, errorThreshold))
+      if (inputConfigParameters())
       {
          cout << "Model configured successfully!" << endl;
          cout << "########################################" << endl;
          if (printConfigParameters())
          {
             cout << "########################################" << endl;
+
             allocateMemory();
             cout << "Memory allocated" << endl;
+
             initializeArrays();
             cout << "Weights intialized" << endl;
+
             loadTests();
             cout << "Tests loaded" << endl;
+
             cout << "########################################" << endl;
-         }
-      }
-      else 
-      {
-         cout << "Model was not configured" << endl;
-      }
-      
-      cout << "finished constructing" << endl;
+         } // if (printConfigParameters())
+      } // if (inputConfigParameters())
+      else cout << "Model was not configured" << endl;
 
       return;
-   }
-   /*
-   NeuralNetwork(int numLayers, int* layerSzs, bool isTraining, 
-                 int numTests, double wlb, double wub, int rngSeed,
-                 bool isLoading, double lambda, bool thresFuncType) 
-   */
+   } // NeuralNetwork()
    
    ~NeuralNetwork() {
-      delete LAYER_SIZE;
+      delete layerSize;
       delete activations;
       delete weights;
-      delete dweights;
-      delete inputValues;
       delete trueValues;
+
+      if (isTraining)
+      {
+         delete dweights;
+         delete inputValues;
+      }
+      
+      return;
    }
 
-   // private:
-   bool setConfigParameters(int numLayers, int* layerSzs, bool isTraining, 
-                            int numTests, double wlb, double wub, bool isLoading,
-                            double lambda, bool thresFuncType, 
-                            int maxIter, double errorThreshold) 
-   {
-      bool modelValid = 1;
-
-      if (numLayers != 3) 
-      {
-         cout << "ERROR: This neural network does not support more or less than 3 layers" << endl;
-         modelValid = 0;
-      }
-      else NUM_LAYERS = numLayers;
-
-      vector<int> invalidLayers;
-      for (int i1 = 0; i1 < numLayers; i1++) 
-      {
-         if (layerSzs[i1] <= 0)
-         {
-            invalidLayers.push_back(i1);
-         }
-      }
-
-      if (invalidLayers.size() > 0 || layerSzs[numLayers - 1] != 1)
-      {
-         if (invalidLayers.size() > 0)
-         {
-            cout << "ERROR: The following layers have invalid sizes (<= 0): ";
-            for (int badLayer : invalidLayers) cout << badLayer << " ";
-            cout << endl;
-            modelValid = 0;
-         }
-         if (layerSzs[numLayers - 1] != 1)
-         {
-            cout << "ERROR: There may only be one output activation" << endl;
-            modelValid = 0;
-         }
-      }
-      else LAYER_SIZE = layerSzs;
-
-      IS_TRAINING = isTraining;
-
-      if (numTests <= 0)
-      {
-         cout << "ERROR: Invalid number of tests (<= 0)" << endl;
-         modelValid = 0;
-      }
-      else NUM_TESTS = numTests;
-
-      if (wlb - wub > EPS)
-      {
-         cout << "ERROR: Lower bound for weights must be <= upper bound for weights" << endl;
-         modelValid = 0;
-      }
-      else
-      {
-         WLB = wlb;
-         WUB = wub;
-      }
-
-      IS_LOADING = isLoading;
-
-      if (lambda < EPS)
-      {
-         cout << "ERROR: Lambda must be positive" << endl;
-         modelValid = 0;
-      }
-      else LAMBDA = lambda;
-
-      if (thresFuncType != 0)
-      {
-         cout << "ERROR: Threshold function type is invalid, can only be 0 (sigmoid)" << endl;
-         modelValid = 0;
-      }
-      else THRESHOLD_FUNCTION_TYPE = thresFuncType;
-
-      if (maxIter <= 0)
-      {
-         cout << "ERROR: Model must run for positive number of epochs." << endl;
-         modelValid = 0;
-      }
-      else MAX_ITERATIONS = maxIter;
-
-      if (errorThreshold < 0)
-      {
-         cout << "ERROR: Must have positive error threshold." << endl;
-         modelValid = 0;
-      }
-      else ERROR_THRESHOLD = errorThreshold;
-      
-      return modelValid;
-   } 
    /*
-   bool setConfigParameters(int numLayers, int* layerSzs, bool isTraining, 
-                            int numTests, double wlb, double wub, bool isLoading,
-                            double lambda, bool thresFuncType) 
+   * ##################################################
+   *        Methods used to configure the model
+   * ##################################################
    */
 
+   /*
+   * Inputs the integer contained in the first characters in the file
+   * although it is ok to have more characters after the number
+   */
+   int getNextInteger(ifstream& fin)
+   {
+      string line;
+      getline(fin, line);
+
+      string num;
+      int idx = 0;
+      while (idx < (int) line.length() && line[idx] != ' ')
+      {
+         num += line[idx];
+         idx++;
+      }
+
+      return stoi(num);
+   } // int getNextInteger(ifstream& fin)
+
+   /*
+   * Inputs the floating point number contained in the first characters in the file
+   * although it is ok to have more characters after the number
+   */
+   double getNextDouble(ifstream& fin)
+   {
+      string line;
+      getline(fin, line);
+
+      string num;
+      int idx = 0;
+      while (idx < (int) line.length() && line[idx] != ' ') 
+      {
+         num += line[idx];
+         idx++;
+      }
+
+      return stod(num);
+   } // double getNextDouble(ifstream& fin)
+
+   /*
+   * gets the next line that is not a comment (does not begin with '/' or '*')
+   */
+   string getNextParameter(ifstream& fin)
+   {
+      string line;
+      while (!fin.eof() && (line.length() <= TARGET.length() || line.substr(0, TARGET.length()) != TARGET))
+         getline(fin, line);
+      
+      string parameter;
+      int idx = TARGET.size();
+      while (idx < (int) line.length() && line[idx] != ' ') 
+      {
+         parameter += line[idx];
+         idx++;
+      }
+
+      return parameter;
+   }
+
+   bool inputConfigParameters() 
+   {
+      bool modelValid = 1;
+      ifstream fin(CONFIG_FILE);
+
+      while (!fin.eof())
+      {
+         string parameter = getNextParameter(fin);
+         
+         if (parameter == "numLayers")
+         {
+            numLayers = getNextInteger(fin);
+            if (numLayers != EXPECTED_NUM_LAYERS) 
+            {
+               cout << "ERROR: This neural network does not support more or less than " 
+                    << EXPECTED_NUM_LAYERS << " layers" << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "numLayers")
+
+         if (parameter == "layerSizes")
+         {
+            layerSize = new int[numLayers];
+            int numInvalidLayers = 0;
+
+            for (int i1 = 0; i1 < numLayers; i1++) 
+            {
+               layerSize[i1] = getNextInteger(fin);
+               if (layerSize[i1] <= 0)
+               {
+                  numInvalidLayers++;
+
+                  if (numInvalidLayers == 1) // only print the following when the first invalid layer is discovered
+                     cout << "ERROR: The following layers have invalid sizes (<= 0): ";
+                  cout << layerSize[i1] << " ";
+
+                  modelValid = 0;
+               }
+            } // for (int i1 = 0; i1 < layerSizes.length(); i1++) 
+            if (numInvalidLayers > 0) cout << endl;
+         } // if (parameter == "layerSizes")
+
+         if (parameter == "isTraining")
+         {
+            if (getNextInteger(fin) == 1) isTraining = true;
+            else isTraining = false;
+         } // if (parameter == "isTraining")
+
+         if (parameter == "numTests")
+         {
+            numTests = getNextInteger(fin);
+            if (numTests <= 0)
+            {
+               cout << "ERROR: Invalid number of tests (<= 0)" << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "numTests")
+
+         if (parameter == "wb")
+         {
+            wlb = getNextDouble(fin);
+            wub = getNextDouble(fin);
+            if (wlb - wub > EPSILON)
+            {
+               cout << "ERROR: Lower bound for weights must be <= upper bound for weights" << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "wb")
+
+         if (parameter == "lambda")
+         {
+            lambda = getNextDouble(fin);
+            if (lambda < EPSILON)
+            {
+               cout << "ERROR: lambda must be positive" << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "lambda")
+
+         if (parameter == "thresholdFunctionType")
+         {
+            thresholdFunctionType = getNextInteger(fin);
+            if (thresholdFunctionType)
+            {
+               cout << "ERROR: Threshold function type is invalid, can only be 0 (sigmoid)" << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "thresholdFunctionType")
+
+         if (parameter == "maxIterations")
+         {
+            maxIterations = getNextInteger(fin);
+            if (maxIterations <= 0)
+            {
+               cout << "ERROR: Model must run for positive number of iterations." << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "maxIterations")
+
+         if (parameter == "errorThreshold")
+         {
+            errorThreshold = getNextDouble(fin);
+            if (errorThreshold < 0)
+            {
+               cout << "ERROR: Must have positive error threshold." << endl;
+               modelValid = 0;
+            }
+         } // if (parameter == "errorThreshold")
+      } // while (!fin.eof())   
+
+      return modelValid;
+   } // bool setConfigParameters() 
+
+   /*
+   * Prints the configuration of the model
+   * Asks the user for confirmation
+   * Only coninues with training/testing if user confirms the configuration is correct
+   */
    bool printConfigParameters() 
    {
       cout << "Printing configuration paramenters:" << endl << endl;
 
-      cout << "Number of layers: " << NUM_LAYERS << endl;
+      cout << "Number of layers: " << numLayers << endl;
 
       cout << "Size of each layer: ";
-      for (int i1 = 0; i1 < NUM_LAYERS; i1++)
-      {
-         cout << LAYER_SIZE[i1] << " ";
-      }
+      for (int i1 = 0; i1 < numLayers; i1++) cout << layerSize[i1] << " ";
       cout << endl;
 
+      cout << "The threshold function used will be: ";
+      if (thresholdFunctionType == 0) cout << "sigmoid" << endl;
+
       cout << "Current mode: ";
-      if (IS_TRAINING) cout << "training" << endl;
+      if (isTraining) cout << "training" << endl;
       else cout << "testing" << endl;
 
-      cout << "Number of tests: " << NUM_TESTS << endl;
+      if (isTraining)
+      {
+         cout << "Number of tests: " << numTests << endl;
 
-      cout << "Weights will be initialied between " << WLB << " and " << WUB << endl;
+         cout << "Weights will be initialized between " << wlb << " and " << wub << endl;
 
-      cout << "Lambda is " << LAMBDA << endl;
+         cout << "lambda is " << lambda << endl;
 
-      cout << "The threshold function used will be: ";
-      if (THRESHOLD_FUNCTION_TYPE == 0) cout << "sigmoid" << endl;
-
-      cout << "The model will stop when it reached " << MAX_ITERATIONS
-           << " epochs or reaches a error lower than " << ERROR_THRESHOLD << endl;
+         cout << "The model will stop when it reached " << maxIterations
+              << " iterations or reaches a error lower than " << errorThreshold << endl;
+      } // if (isTraining)
 
       cout << endl;
       cout << "Is this the correct model? [y/n]" << endl;
       string input;
       cin >> input;
-      if (input == "n") return 0;
-      else return 1;
+      return (input != "n");
    } // bool printConfigParameters()
 
    /*
    * Initializes arrays based on the following dimensions:
-   * a: NUM_LAYERS, LAYER_SIZE
+   * a: numLayers, layerSize of current layer
+   * weights and dweights: numLayers - 1, layerSize of current layer, layerSize of next layer
    */
    void allocateMemory() 
    {
-      activations = new double*[NUM_LAYERS];
-      for (int i1 = 0; i1 < NUM_LAYERS; i1++) 
-      {
-         activations[i1] = new double[LAYER_SIZE[i1]];
-      }
+      activations = new double*[numLayers];
+      for (int i1 = 0; i1 < numLayers; i1++) 
+         activations[i1] = new double[layerSize[i1]];
 
-      weights = new double**[NUM_LAYERS - 1];
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
+      weights = new double**[numLayers - 1];
+      if (isTraining) dweights = new double**[numLayers - 1];
+      for (int i1 = 0; i1 < numLayers - 1; i1++) 
       {
-         weights[i1] = new double*[LAYER_SIZE[i1]];
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
+         weights[i1] = new double*[layerSize[i1]];
+         if (isTraining) dweights[i1] = new double*[layerSize[i1]];
+         for (int i2 = 0; i2 < layerSize[i1]; i2++) 
          {
-            weights[i1][i2] = new double[LAYER_SIZE[i1 + 1]];
+            weights[i1][i2] = new double[layerSize[i1 + 1]];
+            if (isTraining) dweights[i1][i2] = new double[layerSize[i1 + 1]];
          }
-      }
+      } // for (int i1 = 0; i1 < numLayers - 1; i1++) 
 
-      dweights = new double**[NUM_LAYERS - 1];
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
-      {
-         dweights[i1] = new double*[LAYER_SIZE[i1]];
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
-         {
-            dweights[i1][i2] = new double[LAYER_SIZE[i1 + 1]];
-         }
-      }
+      inputValues = new double*[numTests];
+      for (int i1 = 0; i1 < numTests; i1++) 
+         inputValues[i1] = new double[layerSize[0]];
 
-      inputValues = new double*[NUM_TESTS];
-      for (int i1 = 0; i1 < NUM_TESTS; i1++) 
-      {
-         inputValues[i1] = new double[LAYER_SIZE[0]];
-      }
-
-      trueValues = new double[NUM_TESTS];
+      trueValues = new double[numTests];
 
       return;
    } // void allocateMemory()
 
    /*
-   * generates a pseudorandom floating point value in [lb, ub]
+   * generates a pseudorandom floating point value in [wlb, wub]
    */
    double genRand() 
    {
       double ret = (1.0 * rand()) / RAND_MAX;
-      ret *= (WUB - WLB);
-      ret += WLB;
+      ret *= (wub - wlb);
+      ret += wlb;
       return ret;
    }
 
    /*
-   * Initializes all weights in the range [WLB, WUB]
+   * Initializes all weights in the range [wlb, wub]
    */
    void initializeArrays() {
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
-      {
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
-         {
-            for (int i3 = 0; i3 < LAYER_SIZE[i1 + 1]; i3++) 
-            {
+      for (int i1 = 0; i1 < numLayers - 1; i1++) 
+         for (int i2 = 0; i2 < layerSize[i1]; i2++) 
+            for (int i3 = 0; i3 < layerSize[i1 + 1]; i3++) 
                weights[i1][i2][i3] = genRand();
-            }
-         }
-      }
 
       return;
    } // void initializeArrays()
@@ -316,188 +390,61 @@ struct NeuralNetwork
    void printWeights() 
    {
       cout << "Weights:" << endl;
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
+      for (int i1 = 0; i1 < numLayers - 1; i1++) 
       {
          cout << "From layer " << i1 << ":" << endl;
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
+         for (int i2 = 0; i2 < layerSize[i1]; i2++) 
          {
             cout << "From activation " << i2 << ": ";
-            for (int i3 = 0; i3 < LAYER_SIZE[i1 + 1]; i3++) 
-            {
-               cout << fixed << setprecision(3) << weights[i1][i2][i3] << " ";
-            }
+            for (int i3 = 0; i3 < layerSize[i1 + 1]; i3++) 
+               cout << fixed << setprecision(PRECISION) << weights[i1][i2][i3] << " ";
             cout << endl;
          }
-      }
+      } // for (int i1 = 0; i1 < numLayers - 1; i1++) 
 
       return;
    } // void printWeights()
 
-   void loadTests()
-   {
-      for (int i1 = 0; i1 < NUM_TESTS; i1++)
-      {
-         string fname;
-         if (i1 < 10) fname = "tc0" + to_string(i1) + ".txt";
-         else fname = "tc" + to_string(i1) + ".txt";
-
-         ifstream fin("Tests/" + fname);
-         for (int i2 = 0; i2 < LAYER_SIZE[0]; i2++)
-         {
-            fin >> inputValues[i1][i2];
-            cout << fixed << setprecision(3) << inputValues[i1][i2] << " ";
-         }
-         fin >> trueValues[i1];
-         cout << fixed << setprecision(3) << trueValues[i1] << endl;
-      }
-   }
+   /*
+   * ##################################################
+   *        Methods used in training and testing
+   * ##################################################
+   */
 
    /*
-   * Passes though the values in the input through the model
-   * As per design, 
-   * This impelentation pushes updates from layer i1 to i1 + 1, instead of pulling from i1 - 1
+   * stores values in each test case into inputValues and trueValues
    */
-   double evaluate(int testCase, bool printResults) 
+   void loadTests()
    {
-      for (int i1 = 0; i1 < LAYER_SIZE[0]; i1++) 
-         activations[0][i1] = inputValues[testCase][i1];
-
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++) 
+      for (int i1 = 0; i1 < numTests; i1++)
       {
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++) 
+         /*
+         * tests will be stored under Tests/
+         * with the format described below
+         */
+         string fname = "Tests/tc" + to_string(i1) + ".txt";
+
+         ifstream fin(fname);
+         for (int i2 = 0; i2 < layerSize[0]; i2++)
          {
-            for (int i3 = 0; i3 < LAYER_SIZE[i1 + 1]; i3++) 
-            {
-               activations[i1 + 1][i3] += activations[i1][i2] * weights[i1][i2][i3];
-            }
+            fin >> inputValues[i1][i2];
+            cout << fixed << setprecision(PRECISION) << inputValues[i1][i2] << " ";
          }
+         fin >> trueValues[i1];
+         cout << fixed << setprecision(PRECISION) << trueValues[i1] << endl;
+      } // for (int i1 = 0; i1 < numTests; i1++)
 
-         for (int i2 = 0; i2 < LAYER_SIZE[i1 + 1]; i2++) 
-         {
-            activations[i1 + 1][i2] = thresholdFunction(activations[i1 + 1][i2]);
-         }
-      }
-
-      double e = error(activations[NUM_LAYERS - 1][0], trueValues[testCase]);
-
-      if (printResults) 
-      {
-         cout << "Test case " << testCase << ":\t";
-         cout << fixed << setprecision(3) << "expected " << trueValues[testCase] << ", received " << activations[NUM_LAYERS - 1][0] << "\t";
-         cout << fixed << setprecision(3) << "error is: " << e << endl;
-      }
-
-      return e;
-   } // double evaluate()
-
-   // Training
-   void calculateDWForHidden(int layer, int testCase)
-   {
-      double fOfThetaj = 0;
-      for (int j = 0; j < LAYER_SIZE[layer]; j++)
-      {
-         fOfThetaj += activations[layer][j] * weights[layer][j][0];
-      }
-      fOfThetaj = thresholdFunction(fOfThetaj);
-
-      for (int j = 0; j < LAYER_SIZE[layer]; j++)
-      {
-         dweights[layer][j][0] = (trueValues[testCase] - fOfThetaj) * 
-                                 (fOfThetaj * (1 - fOfThetaj)) * 
-                                 activations[layer][j] *
-                                 LAMBDA;
-      }
-   }
-
-   void calculateDWForInput(int layer, int testCase)
-   {
-      for (int i = 0; i < LAYER_SIZE[layer + 2]; i++) 
-      {
-         double fOfThetaj = 0;
-         for (int j = 0; j < LAYER_SIZE[layer + 1]; j++)
-         {
-            fOfThetaj += activations[layer + 1][j] * weights[layer + 1][j][0];
-         }
-         fOfThetaj = thresholdFunction(fOfThetaj);
-
-         for (int j = 0; j < LAYER_SIZE[layer + 1]; j++)
-         {
-            double fOfThetak = 0;
-            for (int k = 0; k < LAYER_SIZE[layer]; k++)
-            {
-               fOfThetak += activations[layer][k] * weights[layer][k][j];
-            }
-            fOfThetak = thresholdFunction(fOfThetak);
-            
-            for (int k = 0; k < LAYER_SIZE[layer]; k++)
-            {
-               dweights[layer][k][j] = (trueValues[testCase] - fOfThetaj) * 
-                                       (fOfThetaj * (1 - fOfThetaj)) * 
-                                       weights[layer + 1][j][i] *
-                                       (fOfThetak * (1 - fOfThetak)) *
-                                       activations[layer][k] *
-                                       LAMBDA;
-            }
-         }
-      }
-   }
-
-   void applyDW()
-   {
-      for (int i1 = 0; i1 < NUM_LAYERS - 1; i1++)
-      {
-         for (int i2 = 0; i2 < LAYER_SIZE[i1]; i2++)
-         {
-            for (int i3 = 0; i3 < LAYER_SIZE[i1 + 1]; i3++)
-            {
-               weights[i1][i2][i3] += dweights[i1][i2][i3];
-               dweights[i1][i2][i3] = 0;
-            }
-         }
-      }
-   }
-
-   void train()
-   {
-      double error;
-      int epochs = 0;
-      do
-      {
-         double curError = 0;
-         for (int i1 = 0; i1 < NUM_TESTS; i1++)
-         {
-            curError += evaluate(i1, 0);
-            calculateDWForHidden(NUM_LAYERS - 2, i1);
-            calculateDWForInput(0, i1);
-            applyDW();
-         }
-
-         error = curError;
-         epochs++;
-
-         if (epochs % 5000 == 0) 
-         {
-            cout << "Model has run " << epochs << " epochs ";
-            cout << fixed << setprecision(3) << "and achieved an error of " << error << endl;
-         }
-      } 
-      while (epochs < MAX_ITERATIONS && error > ERROR_THRESHOLD);
-
-      cout << fixed << setprecision(3) << "Model terminated after " << epochs << " epochs with an error of " << error << endl;
-      if (epochs == MAX_ITERATIONS) 
-         cout << "Model terminated due to reaching maximum number of epochs (" << MAX_ITERATIONS << ")." << endl;
-      else 
-         cout << "Model terminated due to reaching low enough error <=(" << ERROR_THRESHOLD << ")." << endl;
-      
-      for (int i1 = 0; i1 < NUM_TESTS; i1++) evaluate(i1, 1);
-      
       return;
-   }
+   } // void loadTests()
 
-   // Testing
+   /*
+   * computes the threshold function depending on value of thresholdFunctionType
+   * type is 0: sigmoid
+   * if type is not any of the above values, it should be captured when configuration is initially inputted
+   */
    double thresholdFunction(double val) 
    {
-      if (THRESHOLD_FUNCTION_TYPE == 0) 
+      if (thresholdFunctionType == 0) 
       {
          return 1.0 / (1.0 + exp(-val));
       }
@@ -506,36 +453,170 @@ struct NeuralNetwork
          cout << "Threshold function invalid, somehow didn't catch this during configuration" << endl;
          return -1;
       }
-   }
+   } // double thresholdFunction(double val)
 
    double error(double f, double t) 
    {
       return 0.5 * (t - f) * (t - f);
    }
 
-   void test() 
+   /*
+   * Passes though the values in the input through the model
+   * As per design, 
+   * This impelentation pushes updates from layer i1 to i1 + 1, instead of pulling from i1 - 1
+   */
+   double forwardPass(int testCase, bool printResults) 
    {
-      double totError = 0;
-      for (int i1 = 1; i1 <= NUM_TESTS; i1++) totError += evaluate(i1, 1);
+      for (int i1 = 0; i1 < layerSize[0]; i1++) 
+         activations[0][i1] = inputValues[testCase][i1];
 
-      cout << fixed << setprecision(3) << "Average error is: " << totError / NUM_TESTS << endl;
+      for (int i1 = 0; i1 < numLayers - 1; i1++) 
+      {
+         for (int i2 = 0; i2 < layerSize[i1]; i2++) 
+            for (int i3 = 0; i3 < layerSize[i1 + 1]; i3++) 
+               activations[i1 + 1][i3] += activations[i1][i2] * weights[i1][i2][i3];
+
+         for (int i2 = 0; i2 < layerSize[i1 + 1]; i2++) 
+            activations[i1 + 1][i2] = thresholdFunction(activations[i1 + 1][i2]);
+      }
+
+      double e = error(activations[2][0], trueValues[testCase]);
+
+      if (printResults) 
+      {
+         cout << "Test case " << testCase << ":\t";
+         cout << fixed << setprecision(PRECISION) << "expected " << trueValues[testCase] << ", received " << activations[2][0] << "\t";
+         cout << fixed << setprecision(PRECISION) << "error is: " << e << endl;
+      }
+
+      return e;
+   } // double forwardPass()
+
+   /*
+   * ##################################################
+   *        Methods used entirely for training
+   * ##################################################
+   */
+
+   /*
+   * Calculates the changes in weights for 
+   */
+   void calculateDWForHidden(int testCase)
+   {
+      double fOfThetaj = 0.0;
+      for (int j = 0; j < layerSize[HIDDEN_LAYER]; j++)
+         fOfThetaj += activations[HIDDEN_LAYER][j] * weights[HIDDEN_LAYER][j][0];
+      fOfThetaj = thresholdFunction(fOfThetaj);
+
+      for (int j = 0; j < layerSize[HIDDEN_LAYER]; j++)
+      {
+         dweights[HIDDEN_LAYER][j][0] = -1.0 * (trueValues[testCase] - fOfThetaj) * 
+                                        (fOfThetaj * (1.0 - fOfThetaj)) * 
+                                        activations[HIDDEN_LAYER][j];
+      }
+   }
+
+   /*
+   * layer must be 0
+   * testCase must be between 0 and numTests - 1
+   */
+   void calculateDWForInput(int testCase)
+   {
+      double fOfThetazero = 0.0;
+      for (int j = 0; j < layerSize[HIDDEN_LAYER]; j++)
+         fOfThetazero += activations[HIDDEN_LAYER][j] * weights[HIDDEN_LAYER][j][0];
+      fOfThetazero = thresholdFunction(fOfThetazero);
+
+      for (int j = 0; j < layerSize[HIDDEN_LAYER]; j++)
+      {
+         double fOfThetaj = 0.0;
+         for (int k = 0; k < layerSize[INPUT_LAYER]; k++)
+            fOfThetaj += activations[INPUT_LAYER][k] * weights[INPUT_LAYER][k][j];
+         fOfThetaj = thresholdFunction(fOfThetaj);
+         
+         for (int k = 0; k < layerSize[INPUT_LAYER]; k++)
+         {
+            dweights[INPUT_LAYER][k][j] = -1.0 * activations[INPUT_LAYER][k] *
+                                          (fOfThetaj * (1.0 - fOfThetaj)) *
+                                          (trueValues[testCase] - fOfThetazero) * 
+                                          (fOfThetazero * (1.0 - fOfThetazero)) * 
+                                          weights[HIDDEN_LAYER][j][0];
+         }
+      } // for (int j = 0; j < layerSize[HIDDEN_LAYER]; j++)
 
       return;
    }
-};
+
+   void applyDW()
+   {
+      for (int i1 = 0; i1 < numLayers - 1; i1++)
+         for (int i2 = 0; i2 < layerSize[i1]; i2++)
+            for (int i3 = 0; i3 < layerSize[i1 + 1]; i3++)
+            {
+               weights[i1][i2][i3] += -1.0 * dweights[i1][i2][i3] * lambda;
+               dweights[i1][i2][i3] = 0.0;
+            }
+
+      return;
+   }
+
+   void train()
+   {
+      double curError = 0.0;
+      int iterations = 0;
+      do
+      {
+         curError = 0.0;
+         for (int i1 = 0; i1 < numTests; i1++)
+         {
+            curError += forwardPass(i1, 0);
+            calculateDWForHidden(i1);
+            calculateDWForInput(i1);
+            applyDW();
+         }
+
+         iterations++;
+
+         if (iterations % ITERATION_PRINTING_FREQUENCY == 0) 
+         {
+            cout << "Model has run " << iterations << " iterations ";
+            cout << fixed << setprecision(PRECISION) << "and achieved an error of " << curError << endl;
+         }
+      } 
+      while (iterations < maxIterations && curError > errorThreshold);
+
+      cout << fixed << setprecision(PRECISION) << "Model terminated after " << iterations << " iterations with an error of " << curError << endl;
+      if (iterations == maxIterations) 
+         cout << "Model terminated due to reaching maximum number of iterations (" << maxIterations << ")." << endl;
+      else 
+         cout << "Model terminated due to reaching low enough error <=(" << errorThreshold << ")." << endl;
+      
+      for (int i1 = 0; i1 < numTests; i1++) forwardPass(i1, 1);
+      
+      return;
+   } // void train()
+
+   /*
+   * ##################################################
+   *        Methods used in testing
+   * ##################################################
+   */
+
+   void test() 
+   {
+      double totError = 0.0;
+      for (int i1 = 1; i1 <= numTests; i1++) totError += forwardPass(i1, 1);
+
+      cout << fixed << setprecision(PRECISION) << "Average error is: " << totError / numTests << endl;
+
+      return;
+   }
+}; // struct NeuralNetwork
 
 int main(int argc, char* argv[]) 
 {
-   // sets the seed to the current time, ensuring different results for every run
-   srand(time(NULL));
-
-   int* layerSzs = new int[3];
-   layerSzs[0] = 2;
-   layerSzs[1] = 4;
-   layerSzs[2] = 1;
-
-   NeuralNetwork network(3, layerSzs, 0,
-                         4, -1.5, 1.5, 0, 0.3, 0, 200000, 0.002);
+   srand(time(NULL));         // sets the random seed to current time, so no two runs are the same
+   NeuralNetwork network;
    network.train();
 
    return 0;

@@ -70,6 +70,12 @@
       "variant": "cpp",
       "__nullptr": "cpp",
       "compare": "cpp",
-      "concepts": "cpp"
+      "concepts": "cpp",
+      "fstream": "cpp",
+      "*.inc": "cpp",
+      "__assert": "cpp",
+      "__availability": "cpp",
+      "iomanip": "cpp",
+      "sstream": "cpp"
    }
 }

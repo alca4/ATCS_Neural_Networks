@@ -1,45 +1,74 @@
 /*
 * Author: Andrew Liang
 * Date of Creation: 15/09/2023
-* Configures model
+* Configures an a-b-1 model
 */
 
-NUM_LAYERS
-3                    // must satisfy: = 3
+/*
+* must satisfy: numLayers == 3
+*/
+PARAM: numLayers
+3
 
+/*
+* sizes of the layers
+* must satisfy: number of values == numLayers
+*               final layer size == 1
+*/
+PARAM: layerSizes
+2
+2
+1
 
-LAYER_SIZE
-2,3,1                // must satisfy: amount of numbers equal to NUM_LAYERS
+/*
+* determines whether models will train or test
+* must be one of the following values:
+* 0: test
+* 1: train
+*/
+PARAM: isTraining
+1
 
+/*
+* test are located in the Tests/ folder
+* must satisfy: numTests > 0 and equal to the number of files in the Tests/ folder
+*/
+PARAM: numTests
+4
 
-MODE                 // determines whether model will train or test
-                     // 0: test
-                     // 1: train
-1                    // must satisfy: = 0 or 1
+/*
+* bound for random weights
+* first is lower bound, second is upper bound
+* must satisfy: lb <= ub
+*/
+PARAM: wb
+-1.5
+1.5
 
-NUM_TESTS
-4                    // must satisfy: = number of files under Tests/
+/*
+* learning rate
+* must satisfy: lambda > 0
+*/
+PARAM: lambda
+0.3
 
+/*
+* determines what the threshold function is
+* must be one of the following values:
+* 0: sigmoid function: 1/(1+exp(-x))
+*/
+PARAM: thresholdFunctionType
+0
 
-WB                   // bound for random weights
-                     // first is lower bound, second is upper bound
--1.5,1.5             // must satisfy: lb <= ub
+/*
+* maximum number of iterations the model will run
+*/
+PARAM: maxIterations
+100000
 
-
-LOAD                 // determines where weights come from
-                     // 0: randomly initialize
-                     // 1: load from file
-0                    // must satisfy: load = 0 or 1
-
-LAMBDA                              // learning rate
-0.3                                 // must satisfy: lambda > 0
-
-THRESHOLD_FUNCTION_TYPE             
-                                    // 0: sigmoid function: 1/(1+exp(-x))
-0                                   // must satisfy: function type = 0
-
-MAX_ITERATIONS
-100
-
-LOSS_THRESHOLD                      // minimum loss model will achieve before quitting
-0.2                                 // must satisfy: threshold >= 0
+/*
+* minimum loss the model will achieve before quitting
+* must satisfy: threshold >= 0
+*/
+PARAM: errorThreshold
+0.002
