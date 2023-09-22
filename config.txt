@@ -7,7 +7,7 @@
 /*
 * must satisfy: numLayers == 3
 */
-PARAM: numLayers
+PARAM: numActivationLayers
 3
 
 /*
@@ -15,7 +15,7 @@ PARAM: numLayers
 * must satisfy: number of values == numLayers
 *               final layer size == 1
 */
-PARAM: layerSizes
+PARAM: activationLayerSizes
 2
 2
 1
@@ -31,7 +31,7 @@ PARAM: isTraining
 
 /*
 * test are located in the Tests/ folder
-* must satisfy: numTests > 0 and equal to the number of files in the Tests/ folder
+* must satisfy: equal to the number of files in the Tests/ folder
 */
 PARAM: numTests
 4
@@ -72,3 +72,9 @@ PARAM: maxIterations
 */
 PARAM: errorThreshold
 0.002
+
+/*
+* frequency at which training information is printed
+*/
+PARAM: iterationPrintingFrequency
+5000
