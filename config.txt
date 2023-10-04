@@ -16,8 +16,8 @@ PARAM: numActivationLayers
 *               final layer size == 1
 */
 PARAM: activationLayerSizes
-2
-2
+3
+5
 1
 
 /*
@@ -29,12 +29,15 @@ PARAM: activationLayerSizes
 PARAM: isTraining
 1
 
+PARAM: loadWeights
+0
+
 /*
 * test are located in the Tests/ folder
 * must satisfy: equal to the number of files in the Tests/ folder
 */
 PARAM: numTests
-4
+8
 
 /*
 * bound for random weights
@@ -42,7 +45,7 @@ PARAM: numTests
 * must satisfy: lb <= ub
 */
 PARAM: wb
--1.5
+0.1
 1.5
 
 /*
@@ -71,10 +74,16 @@ PARAM: maxIterations
 * must satisfy: threshold >= 0
 */
 PARAM: errorThreshold
-0.002
+0.0002
 
 /*
 * frequency at which training information is printed
 */
 PARAM: iterationPrintingFrequency
 5000
+
+/*
+* 1 if save, 0 if no
+*/
+PARAM: saveModel
+1
