@@ -80,7 +80,6 @@ struct NeuralNetwork
    int iterationPrintingFrequency;                    // frequency at which training information is printed (e.x. once per 5000 iterations)
    bool loadWeights;                                  // 1 if load, 0 if randomly generate
    bool saveModel;                                    // 1 if save model to file, 0 if no 
-   bool saveModel;                                    // 1 if save model to file, 0 if no 
 
    bool initializedModelBody = false;                 // if activations/weights/inputs/answers have been initialized
 
@@ -128,41 +127,46 @@ struct NeuralNetwork
       if (inputConfigParameters())
       {
          cout << "Model configured successfully!" << endl;
-         cout << "########################################" << endl;
          printConfigParameters();
-         cout << "########################################" << endl;
 
          allocateMemory();
          initializedModelBody = true;
          cout << "Memory allocated" << endl;
 
+         bool canRun = true;
          if (loadWeights)
          {
-            loadWeightsFromFile();
-            cout << "Weights loaded" << endl;
+            if (loadWeightsFromFile())
+               cout << "Weights loaded successfully!" << endl;
+            else 
+            {
+               cout << "Model configuration failed, architectures do not match" << endl;
+               canRun = false;
+            }
          }
          else 
          {
             initializeArrays();
-            cout << "Weights intialized" << endl;
+            cout << "Weights intialized!" << endl;
          }
 
-         loadTests();
-         cout << "Tests loaded" << endl;
-
-         cout << "########################################" << endl;
-
-         if (isTraining) 
+         if (canRun)
          {
-            train();
+            loadTests();
+            cout << "Tests loaded" << endl;
 
-            if (saveModel) 
+            if (isTraining) 
             {
-               saveWeightsToFile();
-               cout << "Model weights saved!" << endl;
+               train();
+
+               if (saveModel) 
+               {
+                  saveWeightsToFile();
+                  cout << "Model weights saved!" << endl;
+               }
             }
-         }
-         else test();
+            else test();
+         } // if (canRun)
       } // if (inputConfigParameters())
       else cout << "Model was not configured" << endl;
 
@@ -486,12 +490,12 @@ struct NeuralNetwork
       } // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
 
       inputValues = new double*[numTests];
-      for (int i1 = 0; i1 < numTests; i1++) 
-         inputValues[i1] = new double[activationLayerSize[INPUT_LAYER]];
+      for (int testCase = 0; testCase < numTests; testCase++) 
+         inputValues[testCase] = new double[activationLayerSize[INPUT_LAYER]];
 
       trueValues = new double*[numTests];
-      for (int i1 = 0; i1 < numTests; i1++) 
-         trueValues[i1] = new double[activationLayerSize[OUTPUT_LAYER]];
+      for (int testCase = 0; testCase < numTests; testCase++) 
+         trueValues[testCase] = new double[activationLayerSize[OUTPUT_LAYER]];
       
       theta = new double*[numActivationLayers];
       for (int i1 = 0; i1 < numActivationLayers; i1++) 
@@ -540,16 +544,28 @@ struct NeuralNetwork
       return;
    } // void initializeArrays()
 
-   void loadWeightsFromFile()
+   bool loadWeightsFromFile()
    {
       ifstream fin(WEIGHTS_FILE);
-      for (int i1 = 0; (i1 < numActivationLayers - 1); i1++)
-         for (int i2 = 0; i2 < activationLayerSize[i1]; i2++)
-            for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++)
-               fin >> weights[i1][i2][i3];
+
+      bool isCorrectNetwork = true;
+      for (int i1 = 0; i1 < numActivationLayers; i1++)
+      {
+         int layerSz;
+         fin >> layerSz;
+         if (layerSz != activationLayerSize[i1]) isCorrectNetwork = false;
+      }
       
-      return;
-   } // void loadWeightsFromFile();
+      if (isCorrectNetwork)
+      {
+         for (int i1 = 0; i1 < numActivationLayers - 1; i1++)
+            for (int i2 = 0; i2 < activationLayerSize[i1]; i2++)
+               for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++)
+                  fin >> weights[i1][i2][i3];
+      }
+      
+      return isCorrectNetwork;
+   } // bool loadWeightsFromFile();
 
    void saveWeightsToFile()
    {
@@ -561,6 +577,10 @@ struct NeuralNetwork
       fname += to_string(rawtime);
 
       ofstream fout(fname);
+
+      for (int i1 = 0; i1 < numActivationLayers; i1++) fout << activationLayerSize[i1] << " ";
+      fout << endl;
+
       for (int i1 = 0; i1 < numActivationLayers - 1; i1++)
          for (int i2 = 0; i2 < activationLayerSize[i1]; i2++)
             for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++)
@@ -599,24 +619,24 @@ struct NeuralNetwork
    void loadTests()
    {
       cout << "Truth table:" << endl;
-      for (int i1 = 0; i1 < numTests; i1++)
+      for (int testCase = 0; testCase < numTests; testCase++)
       {
-         ifstream fin(TEST_FILE_PREFIX + to_string(i1) + TEST_FILE_SUFFIX);
+         ifstream fin(TEST_FILE_PREFIX + to_string(testCase) + TEST_FILE_SUFFIX);
 
-         for (int i2 = 0; i2 < activationLayerSize[INPUT_LAYER]; i2++)
+         for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
          {
-            fin >> inputValues[i1][i2];
-            cout << inputValues[i1][i2] << " ";
+            fin >> inputValues[testCase][k];
+            cout << inputValues[testCase][k] << " ";
          }
          cout << ": ";
 
-         for (int i2 = 0; i2 < activationLayerSize[OUTPUT_LAYER]; i2++)
+         for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
          {
-            fin >> trueValues[i1][i2];
-            cout << trueValues[i1][i2] << " ";
+            fin >> trueValues[testCase][i];
+            cout << trueValues[testCase][i] << " ";
          }
          cout << endl;
-      } // for (int i1 = 0; i1 < numTests; i1++)
+      } // for (int testCase = 0; testCase < numTests; testCase++)
 
       return;
    } // void loadTests()
@@ -635,13 +655,12 @@ struct NeuralNetwork
 
    /*
    * Passes though the values in the input through the model
-   * if printResults is true, the predicted value, true value, and error are given for the test
    * calculates theta and smallOmega values
    */
    void forwardPass(int testCase) 
    {
-      for (int i1 = 0; i1 < activationLayerSize[INPUT_LAYER]; i1++) 
-         activations[INPUT_LAYER][i1] = inputValues[testCase][i1];
+      for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++) 
+         activations[INPUT_LAYER][k] = inputValues[testCase][k];
 
       for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
          for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
@@ -660,12 +679,19 @@ struct NeuralNetwork
    void printResults(int testCase)
    {
       cout << "Test case " << testCase << ":" << endl;
+      for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++) 
+         cout << activations[INPUT_LAYER][k] << " ";
+      
+      cout << "| ";
+
       for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++) 
-      {
-         cout << "Output " << i << ": ";
-         cout << fixed << setprecision(PRECISION) << "expected " << trueValues[testCase][i]
-                        << ", received " << activations[OUTPUT_LAYER][i] << endl;
-      }
+         cout << activations[OUTPUT_LAYER][i] << " ";
+
+      cout << "| ";
+
+      for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++) 
+         cout << trueValues[testCase][i] << " ";
+      cout << endl;
       
       cout << fixed << setprecision(PRECISION) << "error is: " << error(testCase) << endl;
       
@@ -675,11 +701,11 @@ struct NeuralNetwork
    double calculateAverageError(bool wantResults)
    {
       double avgError = 0.0;
-      for (int i1 = 0; i1 < numTests; i1++)
+      for (int testCase = 0; testCase < numTests; testCase++)
       {
-         forwardPass(i1);
-         avgError += error(i1);
-         if (wantResults) printResults(i1);
+         forwardPass(testCase);
+         avgError += error(testCase);
+         if (wantResults) printResults(testCase);
          resetThetas();
       }
       avgError /= (double) numTests;
@@ -780,13 +806,13 @@ struct NeuralNetwork
       int iterations = 0;
       do 
       {
-         for (int i1 = 0; i1 < numTests; i1++)
+         for (int testCase = 0; testCase < numTests; testCase++)
          {
-            forwardPass(i1);
+            forwardPass(testCase);
             calculateSmallPsiAndBigOmega();
 
-            calculatePartialDerivativeForHidden(i1);
-            calculatePartialDerivativeForInput(i1);
+            calculatePartialDerivativeForHidden(testCase);
+            calculatePartialDerivativeForInput(testCase);
 
             applyDW();
             resetBigOmega();
@@ -795,7 +821,7 @@ struct NeuralNetwork
 
          iterations++;
 
-         avgError = calculateAverageError(0);
+         avgError = calculateAverageError(false);
 
          if (iterations % iterationPrintingFrequency == 0) 
          {
@@ -813,7 +839,7 @@ struct NeuralNetwork
          cout << fixed << setprecision(PRECISION) 
               << "Model terminated due to reaching low enough error (<=" << errorThreshold << ")." << endl;
       
-      calculateAverageError(1);
+      calculateAverageError(true);
       
       return;
    } // void train()

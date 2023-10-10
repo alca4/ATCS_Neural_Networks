@@ -1,10 +1,4 @@
 /*
-* Author: Andrew Liang
-* Date of Creation: 15/09/2023
-* Configures an a-b-1 model
-*/
-
-/*
 * must satisfy: numLayers == 3
 */
 PARAM: numActivationLayers
@@ -16,9 +10,9 @@ PARAM: numActivationLayers
 *               final layer size == 1
 */
 PARAM: activationLayerSizes
-3
+2
 5
-1
+3
 
 /*
 * determines whether models will train or test
@@ -32,12 +26,15 @@ PARAM: isTraining
 PARAM: loadWeights
 0
 
+PARAM: saveModel
+0
+
 /*
 * test are located in the Tests/ folder
 * must satisfy: equal to the number of files in the Tests/ folder
 */
 PARAM: numTests
-8
+4
 
 /*
 * bound for random weights
@@ -81,9 +78,3 @@ PARAM: errorThreshold
 */
 PARAM: iterationPrintingFrequency
 5000
-
-/*
-* 1 if save, 0 if no
-*/
-PARAM: saveModel
-1
