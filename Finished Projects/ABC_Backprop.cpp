@@ -1,12 +1,13 @@
 /*
 * Author: Andrew Liang
-* Date of Creation: 27 September 2023
+* Date of Creation: 10 October 2023
 * Description: A simple A-B-C fully connected neural network
 * The network has:
 * an input layer with A nodes, 
 * a hidden layer with B nodes, 
 * and an output layer with C nodes
 * Allows for the network to be trained and tested
+* Now we can perform backpropagation
 */
 
 #include <iostream>
@@ -14,14 +15,15 @@
 #include <cmath>
 #include <random>
 #include <iomanip>
-#include <time.h>
+#include <chrono>
 using namespace std;
 
 /*
 * Constants
 */ 
-const double EPSILON = 1e-9;                          // used to compare floating point numbers
-const int PRECISION = 9;                              // number of digits after the decimal of printed out float values
+const double EPSILON = 1e-9;                                // used to compare floating point numbers
+const int HIGH_PRECISION = 9;                              // number of digits after the decimal of printed out float values
+const int LOW_PRECISION = 3;                              // number of digits after the decimal of printed out float values
 
 /*
 * sigmoid function, a type of activation function. formula: 1/(1+e^-val)
@@ -79,7 +81,8 @@ struct NeuralNetwork
    double errorThreshold;                             // min error to continue running
    int iterationPrintingFrequency;                    // frequency at which training information is printed (e.x. once per 5000 iterations)
    bool loadWeights;                                  // 1 if load, 0 if randomly generate
-   bool saveModel;                                    // 1 if save model to file, 0 if no 
+   bool saveModel;                                    // 1 if save model to file, 0 if no ;
+   bool printWeights;
 
    bool initializedModelBody = false;                 // if activations/weights/inputs/answers have been initialized
 
@@ -92,10 +95,6 @@ struct NeuralNetwork
    * weights[i1][i2][i3] stores the weight connecting activation i2 of layer i1 to activation i3 to layer i1 + 1
    */
    double*** weights;
-   /*
-   * values of the partial derivative with respect to each weight, dErrordWeight[i1][i2][i3] stores the partial derivative of w[i1][i2][i3]
-   */
-   double*** dErrordWeight;
    /* 
    * values of the inputs in each test, inputValues[i1][i2] stores the i2th input of the i1th test case
    */
@@ -110,12 +109,9 @@ struct NeuralNetwork
    * theta[i1][i2] = ∑ over i3 (activations[i1 - 1][i3] * weights[i1 - 1][i3][i2])
    * smallOmega[i] = (trueValues[i] - activations[i])
    * smallPsi[i] = smallOmega[i] * thresholdFunctionDerivative(theta[OUTPUT_LAYER][i])
-   * bigOmega[j] = ∑ over I (smallOmega[I] * weight[HIDDEN_LAYER][j][I])
    */
    double** theta;
-   double* smallOmega;
    double* smallPsi;
-   double* bigOmega;
 
    /*
    * Configures model parameters and sets up model for training/running
@@ -127,11 +123,9 @@ struct NeuralNetwork
       if (inputConfigParameters())
       {
          cout << "Model configured successfully!" << endl;
-         printConfigParameters();
-
          allocateMemory();
-         initializedModelBody = true;
          cout << "Memory allocated" << endl;
+         initializedModelBody = true;
 
          bool canRun = true;
          if (loadWeights)
@@ -150,6 +144,8 @@ struct NeuralNetwork
             cout << "Weights intialized!" << endl;
          }
 
+         printConfigParameters();
+
          if (canRun)
          {
             loadTests();
@@ -157,15 +153,26 @@ struct NeuralNetwork
 
             if (isTraining) 
             {
+               auto start = chrono::system_clock::now();
                train();
+               auto end = chrono::system_clock::now();
+               chrono::duration<double> elapsed_time = end - start;
+               cout << "Took " << elapsed_time.count() << "s to train" << endl;
 
                if (saveModel) 
                {
                   saveWeightsToFile();
                   cout << "Model weights saved!" << endl;
                }
+            } // if (isTraining)
+            else 
+            {
+               auto start = chrono::system_clock::now();
+               test();
+               auto end = chrono::system_clock::now();
+               chrono::duration<double> elapsed_time = end - start;
+               cout << "Took " << elapsed_time.count() << "s to test" << endl;
             }
-            else test();
          } // if (canRun)
       } // if (inputConfigParameters())
       else cout << "Model was not configured" << endl;
@@ -188,14 +195,8 @@ struct NeuralNetwork
          delete inputValues;
 
          delete theta;
-         delete smallOmega;
 
-         if (isTraining)
-         {
-            delete dErrordWeight;
-            delete smallPsi;
-            delete bigOmega;
-         }
+         if (isTraining) delete smallPsi;
       } // if (initializedModelBody)
       
       return;
@@ -426,6 +427,16 @@ struct NeuralNetwork
                   modelValid = 0;
                }
             } // if (parameter == "iterationPrintingFrequency")
+
+            if (parameter == "printWeights")
+            {
+               printWeights = getNextInteger(fin);
+               if (printWeights != 0 && printWeights != 1)
+               {
+                  cout << "ERROR: saveModel should be 0 (don't print weights) or 1 (print weights)" << endl;
+                  modelValid = 0;
+               }
+            } // if (parameter == "printWeights")
          } // if (isTraining)
       } // while (!fin.eof())   
 
@@ -445,6 +456,8 @@ struct NeuralNetwork
       for (int i1 = 0; i1 < numActivationLayers; i1++) cout << activationLayerSize[i1] << " ";
       cout << endl;
 
+      if (printWeights) printModelWeights();
+
       cout << "The threshold function used will be: ";
       if (thresholdFunctionType == 0) cout << "sigmoid" << endl;
 
@@ -460,6 +473,7 @@ struct NeuralNetwork
 
          cout << "lambda is " << lambda << endl;
 
+         cout << fixed << setprecision(HIGH_PRECISION);
          cout << "The model will stop when it reached " << maxIterations
               << " iterations or reaches a error lower than " << errorThreshold << endl;
       } // if (isTraining)
@@ -471,7 +485,7 @@ struct NeuralNetwork
    /*
    * Initializes arrays based on the following dimensions:
    * a: numActivationLayers, activationLayerSize of current layer
-   * weights and dErrordWeight: numActivationLayers - 1, activationLayerSize of current layer, activationLayerSize of next layer
+   * weights: numActivationLayers - 1, activationLayerSize of current layer, activationLayerSize of next layer
    * inputvalues: numTests, activationLayerSize of input layer
    * truevalues: numTests
    */
@@ -500,22 +514,9 @@ struct NeuralNetwork
       theta = new double*[numActivationLayers];
       for (int i1 = 0; i1 < numActivationLayers; i1++) 
          theta[i1] = new double[activationLayerSize[i1]];
-      smallOmega = new double[activationLayerSize[OUTPUT_LAYER]];
 
       if (isTraining)
-      {
-         
-         dErrordWeight = new double**[numActivationLayers - 1];
-         for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
-         {
-            dErrordWeight[i1] = new double*[activationLayerSize[i1]];
-            for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
-               dErrordWeight[i1][i2] = new double[activationLayerSize[i1 + 1]];
-         } // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
-
          smallPsi = new double[activationLayerSize[OUTPUT_LAYER]];
-         bigOmega = new double[activationLayerSize[HIDDEN_LAYER]];
-      } // if (isTraining)
 
       return;
    } // void allocateMemory()
@@ -572,12 +573,12 @@ struct NeuralNetwork
       time_t rawtime;
       time(&rawtime);
       string fname = SAVED_MODELS_DIRECTORY;
-      for (int i1 = 0; i1 < numActivationLayers; i1++)
-         fname += to_string(activationLayerSize[i1]) + "-";
       fname += to_string(rawtime);
+      for (int i1 = 0; i1 < numActivationLayers; i1++)
+         fname += "-" + to_string(activationLayerSize[i1]);
 
       ofstream fout(fname);
-
+      fout << fixed << setprecision(HIGH_PRECISION);
       for (int i1 = 0; i1 < numActivationLayers; i1++) fout << activationLayerSize[i1] << " ";
       fout << endl;
 
@@ -589,23 +590,22 @@ struct NeuralNetwork
       return;
    } // void saveWeightsToFile()
 
-   void printWeights() 
+   void printModelWeights() 
    {
       cout << "Weights:" << endl;
       for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
       {
-         cout << "From layer " << i1 << ":" << endl;
+         cout << "From activation layer " << i1 << " to " << i1 + 1 << endl;
          for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
          {
-            cout << "From activation " << i2 << ": ";
             for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
-               cout << fixed << setprecision(PRECISION) << weights[i1][i2][i3] << " ";
+               cout << fixed << setprecision(LOW_PRECISION) << weights[i1][i2][i3] << "\t";
             cout << endl;
          }
       } // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
 
       return;
-   } // void printWeights()
+   } // void printModelWeights()
 
    /*
    * ##################################################
@@ -626,14 +626,16 @@ struct NeuralNetwork
          for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
          {
             fin >> inputValues[testCase][k];
-            cout << inputValues[testCase][k] << " ";
+            cout << fixed << setprecision(LOW_PRECISION)
+                 << inputValues[testCase][k] << " ";
          }
-         cout << ": ";
+         cout << "| ";
 
          for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
          {
             fin >> trueValues[testCase][i];
-            cout << trueValues[testCase][i] << " ";
+            cout << fixed << setprecision(LOW_PRECISION)
+                 << trueValues[testCase][i] << " ";
          }
          cout << endl;
       } // for (int testCase = 0; testCase < numTests; testCase++)
@@ -648,37 +650,80 @@ struct NeuralNetwork
    {
       double err = 0.0;
       for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
-         err += 0.5 * smallOmega[i] * smallOmega[i];
+      {
+         double smallOmega = (trueValues[testCase][i] - activations[OUTPUT_LAYER][i]);
+         err += 0.5 * smallOmega * smallOmega;
+      }
 
       return err;
    } // double error(int testCase)
 
    /*
    * Passes though the values in the input through the model
-   * calculates theta and smallOmega values
    */
-   void forwardPass(int testCase) 
+   void forwardPassEvaluate(int testCase) 
    {
-      for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++) 
+      for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
          activations[INPUT_LAYER][k] = inputValues[testCase][k];
 
-      for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
-         for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
-         {
-            for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
-               theta[i1 + 1][i3] += activations[i1][i2] * weights[i1][i2][i3];
-            activations[i1 + 1][i3] = thresholdFunction(theta[i1 + 1][i3]);
-         }
-      
+      for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
+      {
+         theta[HIDDEN_LAYER][j] = 0.0;
+         for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
+            theta[HIDDEN_LAYER][j] += activations[INPUT_LAYER][k] * 
+                                      weights[INPUT_LAYER][k][j];
+         activations[HIDDEN_LAYER][j] = thresholdFunction(theta[HIDDEN_LAYER][j]);
+      }
+
       for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
-         smallOmega[i] = trueValues[testCase][i] - activations[OUTPUT_LAYER][i];
+      {
+         theta[OUTPUT_LAYER][i] = 0.0;
+         for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
+            theta[OUTPUT_LAYER][i] += activations[HIDDEN_LAYER][j] * 
+                                      weights[HIDDEN_LAYER][j][i];
+         activations[OUTPUT_LAYER][i] = thresholdFunction(theta[OUTPUT_LAYER][i]);
+      }
 
       return;
-   } // void forwardPass()
+   } // void forwardPassEvaluate(int testCase)
+   
+   /*
+   * Passes though the values in the input through the model
+   * Also calculates smallpsi
+   * Needs to be separate function as not to have conditionals within training
+   */
+   void forwardPassTrain(int testCase) 
+   {
+      for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
+         activations[INPUT_LAYER][k] = inputValues[testCase][k];
+
+      for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
+      {
+         theta[HIDDEN_LAYER][j] = 0.0;
+         for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
+            theta[HIDDEN_LAYER][j] += activations[INPUT_LAYER][k] * 
+                                       weights[INPUT_LAYER][k][j];
+         activations[HIDDEN_LAYER][j] = thresholdFunction(theta[HIDDEN_LAYER][j]);
+      }
+
+      for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
+      {
+         theta[OUTPUT_LAYER][i] = 0.0;
+         for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
+            theta[OUTPUT_LAYER][i] += activations[HIDDEN_LAYER][j] * 
+                                       weights[HIDDEN_LAYER][j][i];
+         activations[OUTPUT_LAYER][i] = thresholdFunction(theta[OUTPUT_LAYER][i]);
+
+         smallPsi[i] = (trueValues[testCase][i] - activations[OUTPUT_LAYER][i]) * 
+                       thresholdFunctionDerivative(theta[OUTPUT_LAYER][i]);
+      } // for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
+
+      return;
+   } // void forwardPassTrain(int testCAse)
 
    void printResults(int testCase)
    {
-      cout << "Test case " << testCase << ":" << endl;
+      cout << fixed << setprecision(LOW_PRECISION);   // since we are printing values
       for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++) 
          cout << activations[INPUT_LAYER][k] << " ";
       
@@ -693,106 +738,58 @@ struct NeuralNetwork
          cout << trueValues[testCase][i] << " ";
       cout << endl;
       
-      cout << fixed << setprecision(PRECISION) << "error is: " << error(testCase) << endl;
-      
       return;
    } // void printResults(int testCase)
 
    double calculateAverageError(bool wantResults)
    {
+      if (wantResults) cout << "Final truth table:" << endl;
+
       double avgError = 0.0;
       for (int testCase = 0; testCase < numTests; testCase++)
       {
-         forwardPass(testCase);
+         forwardPassEvaluate(testCase);
          avgError += error(testCase);
          if (wantResults) printResults(testCase);
-         resetThetas();
       }
       avgError /= (double) numTests;
 
-      if (wantResults) cout << "Average error is " << avgError << endl;
+      if (wantResults) 
+      {
+         cout << fixed << setprecision(HIGH_PRECISION) 
+              << "Average error is " << avgError << endl;
+      }
 
       return avgError;
-   } // void calculateAverageError(int testCase)
+   } // double calculateAverageError(bool wantResults)
+
    /*
    * ##################################################
    *        Methods used entirely for training
    * ##################################################
    */
 
-   void calculateSmallPsiAndBigOmega()
+   /*
+   * Modifies the weights
+   */
+   void learn()
    {
-      for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
-         smallPsi[i] = smallOmega[i] * thresholdFunctionDerivative(theta[OUTPUT_LAYER][i]);
-      
       for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
+      {
+         double bigOmega = 0.0;
          for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
-            bigOmega[j] += smallPsi[i] * weights[HIDDEN_LAYER][j][i];
-      
-      return;
-   } // void calculateSmallPsiAndBigOmega()
+         {
+            bigOmega += smallPsi[i] * weights[HIDDEN_LAYER][j][i];
+            weights[HIDDEN_LAYER][j][i] += lambda * activations[HIDDEN_LAYER][j] * smallPsi[i];  
+         }
 
-   void resetBigOmega()
-   {
-      for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
-         bigOmega[j] = 0.0;
-
-      return;
-   } // void resetBigOmega()
-
-   void resetThetas()
-   {  
-      for (int i1 = 0; i1 < numActivationLayers; i1++)
-         for (int i2 = 0; i2 < activationLayerSize[i1]; i2++)
-            theta[i1][i2] = 0.0;
-
-      return;
-   } // void resetThetas()
-
-   /*
-   * Calculates the partial derivative of each weight from the hidden layer to the output layer
-   * testCase must be between 0 and numTests - 1
-   */
-   void calculatePartialDerivativeForHidden(int testCase)
-   {
-      for (int i = 0; i < activationLayerSize[OUTPUT_LAYER]; i++)
-         for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
-            dErrordWeight[HIDDEN_LAYER][j][i] = -smallPsi[i] * activations[HIDDEN_LAYER][j];
-
-      return;
-   } // void calculatePartialDerivativeForHidden(int testCase)
-
-   /*
-   * Calculates the partial derivative of each weight from the input layer to the hidden layer
-   * testCase must be between 0 and numTests - 1
-   */
-   void calculatePartialDerivativeForInput(int testCase)
-   {
-      for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
+         double bigPsi = bigOmega * thresholdFunctionDerivative(theta[HIDDEN_LAYER][j]);
          for (int k = 0; k < activationLayerSize[INPUT_LAYER]; k++)
-            dErrordWeight[INPUT_LAYER][k][j] = -activations[INPUT_LAYER][k] *
-                                                thresholdFunctionDerivative(theta[HIDDEN_LAYER][j]) *
-                                                bigOmega[j];
+            weights[INPUT_LAYER][k][j] += lambda * activations[INPUT_LAYER][k] * bigPsi;
+      } // for (int j = 0; j < activationLayerSize[HIDDEN_LAYER]; j++)
 
       return;
-   } // void calculatePartialDerivativeForInput(int testCase)
-
-   /*
-   * applies the changes to each weight
-   * ∆w = -lambda * dErrordWeight[w]
-   */
-   void applyDW()
-   {
-      for (int i1 = 0; i1 < numActivationLayers - 1; i1++)
-         for (int i2 = 0; i2 < activationLayerSize[i1]; i2++)
-            for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++)
-            {
-               weights[i1][i2][i3] += -dErrordWeight[i1][i2][i3] * lambda;
-               dErrordWeight[i1][i2][i3] = 0.0;
-            }
-
-      return;
-   } // void applyDW()
+   } // void learn();
 
    /*
    * trains the model by running gradient descent until one of two conditions
@@ -807,16 +804,9 @@ struct NeuralNetwork
       {
          for (int testCase = 0; testCase < numTests; testCase++)
          {
-            forwardPass(testCase);
-            calculateSmallPsiAndBigOmega();
-
-            calculatePartialDerivativeForHidden(testCase);
-            calculatePartialDerivativeForInput(testCase);
-
-            applyDW();
-            resetBigOmega();
-            resetThetas();
-         } // for (int i1 = 0; i1 < numTests; i1++)
+            forwardPassTrain(testCase);
+            learn();
+         }
 
          iterations++;
 
@@ -825,18 +815,18 @@ struct NeuralNetwork
          if (iterations % iterationPrintingFrequency == 0) 
          {
             cout << "Model has run " << iterations << " iterations ";
-            cout << fixed << setprecision(PRECISION) << "and achieved an error of " << avgError << endl;
+            cout << fixed << setprecision(HIGH_PRECISION) << "and achieved an error of " << avgError << endl;
          }
       } // do
       while (iterations < maxIterations && avgError - errorThreshold > EPSILON);
 
-      cout << fixed << setprecision(PRECISION) << "Model terminated after " << iterations 
+      cout << fixed << setprecision(HIGH_PRECISION);  // since we are printing errors
+      cout << "Model terminated after " << iterations 
            << " iterations with an error of " << avgError << endl;
       if (iterations == maxIterations) 
          cout << "Model terminated due to reaching maximum number of iterations (" << maxIterations << ")." << endl;
       else 
-         cout << fixed << setprecision(PRECISION) 
-              << "Model terminated due to reaching low enough error (<=" << errorThreshold << ")." << endl;
+         cout << "Model terminated due to reaching low enough error (<=" << errorThreshold << ")." << endl;
       
       calculateAverageError(true);
       

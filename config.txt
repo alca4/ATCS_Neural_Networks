@@ -10,7 +10,7 @@ PARAM: numActivationLayers
 *               final layer size == 1
 */
 PARAM: activationLayerSizes
-2
+3
 5
 3
 
