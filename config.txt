@@ -7,11 +7,10 @@ PARAM: numActivationLayers
 /*
 * sizes of the layers
 * must satisfy: number of values == numLayers
-*               final layer size == 1
 */
 PARAM: activationLayerSizes
-3
-5
+2
+10
 3
 
 /*
@@ -21,10 +20,10 @@ PARAM: activationLayerSizes
 * 1: train
 */
 PARAM: isTraining
-1
+0
 
 PARAM: loadWeights
-0
+1
 
 PARAM: saveModel
 0
@@ -78,3 +77,9 @@ PARAM: errorThreshold
 */
 PARAM: iterationPrintingFrequency
 5000
+
+/*
+* Name of the problem
+*/
+PARAM: problem
+Problems/Simultaneous AND OR and XOR
