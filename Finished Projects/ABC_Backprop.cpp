@@ -23,7 +23,7 @@ using namespace std;
 * Constants
 */ 
 const double EPSILON = 1e-18;                          // used to compare floating point numbers
-const int PRECISION = 15;                         // number of digits after the decimal for high precision
+const int PRECISION = 15;                              // number of digits after the decimal for high precision
 
 /*
 * sigmoid function, a type of activation function. formula: 1/(1+e^-val)
@@ -43,7 +43,7 @@ double sigmoidDerivative(double val)
 
 /*
 * A neural network.
-* Currently, it is of the form A-B-1
+* Currently, it is of the form A-B-C
 * Can train and test
 */
 struct NeuralNetwork 
@@ -55,7 +55,7 @@ struct NeuralNetwork
    const string CONFIG_FILE = "config.txt";           // location of configuration file
    const string WEIGHTS_FILE = "weights.txt";         // location of weights file
 
-   const string TEST_FILE_PREFIX = "tc";        // prefix and suffix for test case file addresses (from home directory)
+   const string TEST_FILE_PREFIX = "tc";              // prefix and suffix for test case file addresses (from home directory)
    const string TEST_FILE_SUFFIX = ".txt";            // tests are of the form "Tests/tc1.txt", where the test case number changes
    const string SAVED_MODELS_DIRECTORY = "Models/";   // directory of saved models
    unordered_map<string, int> PARAMETERS = {{"numActivationLayers", 0},
@@ -94,7 +94,7 @@ struct NeuralNetwork
    double errorThreshold;                             // min error to continue running
    int iterationPrintingFrequency;                    // frequency at which training information is printed (e.x. once per 5000 iterations)
    bool loadWeights;                                  // 1 if load, 0 if randomly generate
-   bool saveModel;                                    // 1 if save model to file, 0 if no ;
+   bool saveModel;                                    // 1 if save model to file, 0 if no
    bool printWeights;
    string problem;                                    // the directory where tests are
 
@@ -471,7 +471,7 @@ struct NeuralNetwork
 
             default:
                cout << "ERROR: " << param << " is not a parameter" << endl;
-         } // swithch (val)
+         } // switch (val)
       } // while (!fin.eof())
 
       return modelValid;
@@ -609,6 +609,7 @@ struct NeuralNetwork
 
       /*
       * file name in the format 
+      * time-[activation layer sizes]
       */
       string fname = SAVED_MODELS_DIRECTORY;
       fname += to_string(rawtime);

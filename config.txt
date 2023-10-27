@@ -10,7 +10,7 @@ PARAM: numActivationLayers
 */
 PARAM: activationLayerSizes
 2
-10
+100
 3
 
 /*
@@ -20,13 +20,13 @@ PARAM: activationLayerSizes
 * 1: train
 */
 PARAM: isTraining
-0
-
-PARAM: loadWeights
 1
 
-PARAM: saveModel
+PARAM: loadWeights
 0
+
+PARAM: saveModel
+1
 
 /*
 * test are located in the Tests/ folder
