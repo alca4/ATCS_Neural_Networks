@@ -1,8 +1,6 @@
-/*
-* must satisfy: numLayers == 3
-*/
+
 PARAM: numActivationLayers
-3
+4
 
 /*
 * sizes of the layers
@@ -10,6 +8,7 @@ PARAM: numActivationLayers
 */
 PARAM: activationLayerSizes
 2
+5
 100
 3
 
@@ -26,7 +25,7 @@ PARAM: loadWeights
 0
 
 PARAM: saveModel
-1
+0
 
 /*
 * test are located in the Tests/ folder
@@ -41,7 +40,7 @@ PARAM: numTests
 * must satisfy: lb <= ub
 */
 PARAM: wb
-0.1
+-1.5
 1.5
 
 /*
@@ -76,10 +75,22 @@ PARAM: errorThreshold
 * frequency at which training information is printed
 */
 PARAM: iterationPrintingFrequency
-5000
+5000000
+
+/*
+* whether weights should be printed
+*/
+PARAM: printWeights
+0
 
 /*
 * Name of the problem
 */
 PARAM: problem
 Problems/Simultaneous AND OR and XOR
+
+/*
+* Name of the weights file
+*/
+PARAM: weightsFile
+weights.txt
