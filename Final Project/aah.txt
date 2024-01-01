@@ -1,0 +1,1 @@
+Reading gray scale file 'CenteredBins/5/5.6.bin' (width = 168, height = 168) and writing out 'Better_BMP/5/5.6.bmp'.

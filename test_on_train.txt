@@ -1,0 +1,36 @@
+PARAM: numActivationLayers
+4
+
+PARAM: activationLayerSizes
+28224
+576
+16
+5
+
+PARAM: isTraining
+0
+
+PARAM: loadWeights
+1
+
+PARAM: saveModel
+0
+
+PARAM: numClasses
+5
+
+PARAM: numInEachClass
+5
+5
+5
+5
+5
+
+PARAM: thresholdFunctionType
+0
+
+PARAM: problem
+Digit Classification/Train/
+
+PARAM: weightsFile
+trained_model.txt

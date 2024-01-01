@@ -1,23 +1,12 @@
-
 PARAM: numActivationLayers
 4
 
-/*
-* sizes of the layers
-* must satisfy: number of values == numLayers
-*/
 PARAM: activationLayerSizes
-2
+28224
+576
+16
 5
-15
-3
 
-/*
-* determines whether models will train or test
-* must be one of the following values:
-* 0: test
-* 1: train
-*/
 PARAM: isTraining
 1
 
@@ -27,70 +16,53 @@ PARAM: loadWeights
 PARAM: saveModel
 1
 
-/*
-* test are located in the Tests/ folder
-* must satisfy: equal to the number of files in the Tests/ folder
-*/
 PARAM: numTests
-4
+25
 
-/*
-* bound for random weights
-* first is lower bound, second is upper bound
-* must satisfy: lb <= ub
-*/
 PARAM: wb
-0.1
+-1.5
 1.5
 
-/*
-* learning rate
-* must satisfy: lambda > 0
-*/
 PARAM: lambda
-0.3
+0.001
+
+PARAM: beta1
+.997
+
+PARAM: beta2
+.99999
 
 /*
-* determines what the threshold function is
-* must be one of the following values:
-* 0: sigmoid function: 1/(1+exp(-x))
+* 0: sigmoid function
+* 1: tanh function
 */
 PARAM: thresholdFunctionType
 0
 
-/*
-* maximum number of iterations the model will run
-*/
 PARAM: maxIterations
-100000
+1000000000
 
-/*
-* minimum loss the model will achieve before quitting
-* must satisfy: threshold >= 0
-*/
 PARAM: errorThreshold
-0.0002
+0.005
+8e-5
 
-/*
-* frequency at which training information is printed
-*/
 PARAM: iterationPrintingFrequency
-5000
+1
 
-/*
-* whether weights should be printed
-*/
 PARAM: printWeights
 0
 
-/*
-* Name of the problem
-*/
 PARAM: problem
-Problems/Simultaneous AND OR and XOR
+Digit Classification/Train/
 
-/*
-* Name of the weights file
-*/
 PARAM: weightsFile
-weights.txt
+trained_model.txt
+
+PARAM: willPrintTruthTable
+0
+
+PARAM: earlyStoppingCycles
+1000000000
+
+PARAM: earlyStoppingThreshold
+1e-18
