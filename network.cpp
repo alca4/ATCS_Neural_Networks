@@ -44,6 +44,7 @@
 #include <iomanip>
 #include <chrono>
 #include <unordered_map>
+#include <cassert>
 using namespace std;
 
 /*
@@ -51,7 +52,7 @@ using namespace std;
 */ 
 const double EPSILON = 1e-24;                          // used to compare floating point numbers
 const double INF = 1e9;
-const int PRECISION = 6;                              // number of digits after the decimal for high precision
+const int PRECISION = 9;                              // number of digits after the decimal for high precision
 const string DEFAULT_CONFIG_FILE = "config.txt";       // default configuration file
 
 /*
@@ -156,7 +157,7 @@ struct NeuralNetwork
    double lambda;                                     // learning rate
    double beta1;
    double beta2;
-   double m, v, g, powBeta1T = 1.0, powBeta2T = 1.0;
+   double g, powBeta1T = 1.0, powBeta2T = 1.0;
 
    bool initializedModelBody = false;                 // if activations/weights/inputs/answers have been initialized
 
@@ -184,6 +185,9 @@ struct NeuralNetwork
    double** theta;
    double** psi;
    double** omega;
+
+   double*** m1;
+   double*** m2;
 
    /*
    * Configures model parameters and sets up model for training/running
@@ -273,6 +277,8 @@ struct NeuralNetwork
             delete[] psi;
             delete[] omega;
             delete[] theta;
+            delete[] m1;
+            delete[] m2;
          }
       } // if (initializedModelBody)
       
@@ -607,7 +613,7 @@ struct NeuralNetwork
             case 20:    // numInEachClass
                {
                   numTests = 0;
-                  for (int i1 = 1; i1 <= numClasses; i1++)
+                  for (int i1 = 0; i1 < numClasses; i1++)
                   {
                      numInEachClass[i1] = getNextInteger(fin);
                      if (numInEachClass[i1] <= 0)
@@ -697,7 +703,7 @@ struct NeuralNetwork
          weights[i1] = new double*[activationLayerSize[i1]];
          for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
             weights[i1][i2] = new double[activationLayerSize[i1 + 1]];
-      } // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
+      }
 
       inputValues = new double*[numTests];
       for (int testCase = 0; testCase < numTests; testCase++) 
@@ -720,6 +726,22 @@ struct NeuralNetwork
          omega = new double*[numActivationLayers];
          for (int i1 = 0; i1 < numActivationLayers; i1++) 
             omega[i1] = new double[activationLayerSize[i1]];
+         
+         m1 = new double**[numActivationLayers - 1];
+         for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
+         {
+            m1[i1] = new double*[activationLayerSize[i1]];
+            for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
+               m1[i1][i2] = new double[activationLayerSize[i1 + 1]];
+         }
+
+         m2 = new double**[numActivationLayers - 1];
+         for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
+         {
+            m2[i1] = new double*[activationLayerSize[i1]];
+            for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
+               m2[i1][i2] = new double[activationLayerSize[i1 + 1]];
+         }
       } // if (isTraining)
 
       return;
@@ -840,25 +862,25 @@ struct NeuralNetwork
    */
    void loadTests()
    {
-      int cnt = 0;
-      for (int number = 1; number <= numClasses; number++)
+      int tc = 0;
+      for (int number = 0; number < numClasses; number++)
       {
-         for (int testCase = 1; testCase <= numInEachClass[number]; testCase++)
+         for (int testCase = 0; testCase < numInEachClass[number]; testCase++)
          {
             string infileName = problem;
-            infileName += to_string(number) + "/" + to_string(number) + "." + to_string(testCase) + ".txt";
+            infileName += to_string(number + 1) + "/" + to_string(number + 1) + "." + to_string(testCase + 1) + ".txt";
             ifstream fin(infileName);
 
             for (int m = 0; m < activationLayerSize[INPUT_LAYER]; m++)
-               fin >> inputValues[cnt][m];
+               fin >> inputValues[tc][m];
 
             for (int i = 0; i < activationLayerSize[outputLayer]; i++)
-               if (i == number - 1) {
-                  trueValues[cnt][i] = 1;
+               if (i == number) {
+                  trueValues[tc][i] = 1.0;
                }
-               else trueValues[cnt][i] = 0;
+               else trueValues[tc][i] = 0.0;
             
-            cnt++;
+            tc++;
          }
       } // for (int testCase = 0; testCase < numTests; testCase++)
 
@@ -870,39 +892,13 @@ struct NeuralNetwork
    */
    double error(int testCase) 
    {
-      // double sum = 0.0;
-      // for (int i = 0; i < activationLayerSize[outputLayer]; i++)
-      //    sum += activations[outputLayer][i];
-
-      // double err = 0.0;
-      // for (int i = 0; i < activationLayerSize[outputLayer]; i++)
-      //    err += trueValues[testCase][i] * log(activations[outputLayer][i] / sum);
-
-      // return -err;
-
       double err = 0.0;
       for (int i = 0; i < activationLayerSize[outputLayer]; i++)
          err += 0.5 * (trueValues[testCase][i] - activations[outputLayer][i]) * 
                       (trueValues[testCase][i] - activations[outputLayer][i]);
       
       return err;
-   } // double crossEntropyLoss(int testCase)
-
-   /*
-   * calculates cross-entropy loss
-   */
-   double crossEntropyLoss(int testCase) 
-   {
-      double sum = 0.0;
-      for (int i = 0; i < activationLayerSize[outputLayer]; i++)
-         sum += activations[outputLayer][i];
-
-      double err = 0.0;
-      for (int i = 0; i < activationLayerSize[outputLayer]; i++)
-         err += trueValues[testCase][i] * log(activations[outputLayer][i] / sum);
-
-      return -err;
-   } // double crossEntropyLoss(int testCase)
+   } // double error(int testCase)
 
    /*
    * Passes though the values in the input through the model
@@ -990,11 +986,18 @@ struct NeuralNetwork
       if (wantResults) cout << "Final truth table:" << endl;
 
       double avgError = 0.0;
-      for (int testCase = 0; testCase < numTests; testCase++)
+      int tc = 0;
+      for (int c = 0; c < numClasses; c++)
       {
-         forwardPassEvaluate(testCase);
-         avgError += error(testCase);
-         if (wantResults) printResults(testCase);
+         for (int n = 0; n < numInEachClass[c]; n++)
+         {
+            forwardPassEvaluate(tc);
+            avgError += error(tc);
+            if (wantResults) printResults(tc);
+
+            tc++;
+         }
+         if (wantResults) cout << endl;
       }
       avgError /= (double) numTests;
 
@@ -1022,10 +1025,10 @@ struct NeuralNetwork
             for (int c = 0; c < activationLayerSize[a + 1]; c++)
             {
                omega[a][b] += psi[a + 1][c] * weights[a][b][c];
-               g = activations[a][b] * psi[a + 1][c];
-               m = beta1 * m + (1.0 - beta1) * g;
-               v = beta2 * v + (1.0 - beta2) * g * g;
-               weights[a][b][c] += lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m / (sqrt(v) + 1e-8);
+               g = -activations[a][b] * psi[a + 1][c];
+               m1[a][b][c] = beta1 * m1[a][b][c] + (1.0 - beta1) * g;
+               m2[a][b][c] = beta2 * m2[a][b][c] + (1.0 - beta2) * g * g;
+               weights[a][b][c] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m1[a][b][c] / (sqrt(m2[a][b][c]) + 1e-8);
             } // for (int c = 0; c < activationLayerSize[a + 1]; c++)
 
             psi[a][b] = omega[a][b] * thresholdFunctionDerivative(theta[a][b]);
@@ -1038,20 +1041,22 @@ struct NeuralNetwork
          for (int c = 0; c < activationLayerSize[FIRST_HIDDEN_LAYER + 1]; c++)
          {
             omega[FIRST_HIDDEN_LAYER][b] += psi[FIRST_HIDDEN_LAYER + 1][c] * weights[FIRST_HIDDEN_LAYER][b][c];
-            g = activations[FIRST_HIDDEN_LAYER][b] * psi[FIRST_HIDDEN_LAYER + 1][c];
-            m = beta1 * m + (1.0 - beta1) * g;
-            v = beta2 * v + (1.0 - beta2) * g * g;
-            weights[FIRST_HIDDEN_LAYER][b][c] += lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m / (sqrt(v) + 1e-8);
+            g = -activations[FIRST_HIDDEN_LAYER][b] * psi[FIRST_HIDDEN_LAYER + 1][c];
+            m1[FIRST_HIDDEN_LAYER][b][c] = beta1 * m1[FIRST_HIDDEN_LAYER][b][c] + (1.0 - beta1) * g;
+            m2[FIRST_HIDDEN_LAYER][b][c] = beta2 * m2[FIRST_HIDDEN_LAYER][b][c] + (1.0 - beta2) * g * g;
+            weights[FIRST_HIDDEN_LAYER][b][c] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * 
+                                                 m1[FIRST_HIDDEN_LAYER][b][c] / (sqrt(m2[FIRST_HIDDEN_LAYER][b][c]) + 1e-8);
          } // for (int c = 0; c < activationLayerSize[FIRST_HIDDEN_LAYER + 1]; c++)
 
          psi[FIRST_HIDDEN_LAYER][b] = omega[FIRST_HIDDEN_LAYER][b] * thresholdFunctionDerivative(theta[FIRST_HIDDEN_LAYER][b]);
 
          for (int c = 0; c < activationLayerSize[INPUT_LAYER]; c++)
          {
-            g = activations[INPUT_LAYER][c] * psi[FIRST_HIDDEN_LAYER][b];
-            m = beta1 * m + (1.0 - beta1) * g;
-            v = beta2 * v + (1.0 - beta2) * g * g;
-            weights[INPUT_LAYER][c][b] += lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m / (sqrt(v) + 1e-8);
+            g = -activations[INPUT_LAYER][c] * psi[FIRST_HIDDEN_LAYER][b];
+            m1[INPUT_LAYER][c][b] = beta1 * m1[INPUT_LAYER][c][b] + (1.0 - beta1) * g;
+            m2[INPUT_LAYER][c][b] = beta2 * m2[INPUT_LAYER][c][b] + (1.0 - beta2) * g * g;
+            weights[INPUT_LAYER][c][b] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * 
+                                          m1[INPUT_LAYER][c][b] / (sqrt(m2[INPUT_LAYER][c][b]) + 1e-8);
          } // for (int c = 0; c < activationLayerSize[INPUT_LAYER]; c++)
       } // for (int b = 0; b < activationLayerSize[FIRST_HIDDEN_LAYER]; b++)
 
@@ -1068,10 +1073,12 @@ struct NeuralNetwork
       double lastCycleError = INF;
       double avgError = 0.0;
       int iterations = 0;
+      bool willPrint;
 
       int lastImprovementCycle = 0;
       do 
       {
+         willPrint = false;
          powBeta1T *= beta1;
          powBeta2T *= beta2;
          for (int testCase = 0; testCase < numTests; testCase++)
@@ -1082,16 +1089,16 @@ struct NeuralNetwork
 
          iterations++;
 
+         if (iterations % 10 == 0) willPrint = true;
+         if (iterations % 100 == 0 && saveModel) saveWeightsToFile();
          if (iterations % iterationPrintingFrequency == 0) 
          {
-            avgError = calculateAverageError(false);
+            avgError = calculateAverageError(willPrint);
             cout << "Iteration: " << iterations << "\t";
             cout << "Error: " << avgError << "\t";
             cout << "Lambda: " << lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) << endl;
          }
-         else avgError = calculateAverageError(false);
-         
-         if (iterations % 100 == 0) printTruthTable();
+         else avgError = calculateAverageError(willPrint);
 
          if (avgError + earlyStoppingThreshold - lastCycleError > 0) lastImprovementCycle++;
          else {

@@ -16,21 +16,28 @@ PARAM: loadWeights
 PARAM: saveModel
 1
 
-PARAM: numTests
-25
+PARAM: numClasses
+5
+
+PARAM: numInEachClass
+5
+5
+5
+5
+5
 
 PARAM: wb
--1.5
-1.5
+-0.1
+0.1
 
 PARAM: lambda
-0.001
+1e-3
 
 PARAM: beta1
-.997
+.9
 
 PARAM: beta2
-.99999
+.999
 
 /*
 * 0: sigmoid function
@@ -43,8 +50,7 @@ PARAM: maxIterations
 1000000000
 
 PARAM: errorThreshold
-0.005
-8e-5
+1e-4
 
 PARAM: iterationPrintingFrequency
 1
