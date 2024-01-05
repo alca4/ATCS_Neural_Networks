@@ -33,4 +33,4 @@ PARAM: problem
 Digit Classification/Test/
 
 PARAM: weightsFile
-trained_model.txt
+final_weights.txt

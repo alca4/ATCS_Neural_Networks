@@ -27,8 +27,8 @@ PARAM: numInEachClass
 5
 
 PARAM: wb
--0.1
-0.1
+-.5
+.5
 
 PARAM: lambda
 1e-3
@@ -50,7 +50,7 @@ PARAM: maxIterations
 1000000000
 
 PARAM: errorThreshold
-1e-4
+1e-2
 
 PARAM: iterationPrintingFrequency
 1
