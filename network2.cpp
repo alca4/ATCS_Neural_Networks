@@ -129,32 +129,32 @@ struct NeuralNetwork
     /*
     * Configuration parameters
     */
-    int numActivationLayers;                           // number of layers
-    int* activationLayerSize;                          // activationLayerSize[i1] stores the size of layer i1 (output layer must be 1)
-    bool isTraining;                                   // 1 if training, 0 if testing
-    int numTests;                                      // number of test cases
+    int numActivationLayers;                            // number of layers
+    int* activationLayerSize;                           // activationLayerSize[i1] stores the size of layer i1 (output layer must be 1)
+    bool isTraining;                                    // 1 if training, 0 if testing
+    int numTests;                                       // number of test cases
     int numClasses;
     int* numInEachClass;
-    double wlb, wub;                                   // lower and upper bounds for weights
-    double (*thresholdFunction) (double);              // actual threshold function
-    double (*thresholdFunctionDerivative) (double);    // actual derivative of the threshold function
-    int maxIterations;                                 // max iterations before stopping
-    double errorThreshold;                             // min error to continue running
-    int iterationPrintingFrequency;                    // frequency at which training information is printed (e.x. once per 5000 iterations)
-    bool loadWeights;                                  // 1 if load, 0 if randomly generate
-    bool saveModel;                                    // 1 if save model to file, 0 if no
-    string configFile;                                 // location of configuration file
-    string weightsFile;                                // location of weights file
-    bool printWeights;                                 // whether weights are to be printed
-    string problem;                                    // the directory where tests are
-    bool willPrintTruthTable;                          // whether to print the truth table
+    double wlb, wub;                                    // lower and upper bounds for weights
+    double (*thresholdFunction) (double);               // actual threshold function
+    double (*thresholdFunctionDerivative) (double);     // actual derivative of the threshold function
+    int maxIterations;                                  // max iterations before stopping
+    double errorThreshold;                              // min error to continue running
+    int iterationPrintingFrequency;                     // frequency at which training information is printed (e.x. once per 5000 iterations)
+    bool loadWeights;                                   // 1 if load, 0 if randomly generate
+    bool saveModel;                                     // 1 if save model to file, 0 if no
+    string configFile;                                  // location of configuration file
+    string weightsFile;                                 // location of weights file
+    bool printWeights;                                  // whether weights are to be printed
+    string problem;                                     // the directory where tests are
+    bool willPrintTruthTable;                           // whether to print the truth table
 
-    int earlyStoppingCycles;                           // number of checking cycles before stopping
+    int earlyStoppingCycles;                            // number of checking cycles before stopping
     double earlyStoppingThreshold;
 
-    int thresholdFunctionType;                         // 0 if sigmoid
+    int thresholdFunctionType;                          // 0 if sigmoid
                                                         // 1 if tanh
-    double lambda;                                     // learning rate
+    double lambda;                                      // learning rate
     double beta1;
     double beta2;
     double g, powBeta1T = 1.0, powBeta2T = 1.0;
@@ -208,8 +208,7 @@ struct NeuralNetwork
             bool canRun = true;
             if (loadWeights)
             {
-                if (loadWeightsFromFile())
-                cout << "Weights loaded successfully!" << endl;
+                if (loadWeightsFromFile()) cout << "Weights loaded successfully!" << endl;
                 else 
                 {
                     cout << "Model configuration failed, architectures do not match" << endl;
@@ -381,8 +380,8 @@ struct NeuralNetwork
                     }
                     outputLayer = numActivationLayers - 1;
                     lastHiddenLayer = outputLayer - 1;
+                    break;
                 }
-                break;
 
                 case 1:     // activationLayerSizes  
                 {
@@ -397,15 +396,17 @@ struct NeuralNetwork
                             numInvalidLayers++;
 
                             if (numInvalidLayers == 1) // only print the following when the first invalid layer is discovered
-                            cout << "ERROR: The following activation layers have invalid sizes (<= 0): ";
-                            cout << activationLayerSize[i1] << " ";
+                            {
+                                cout << "ERROR: The following activation layers have invalid sizes (<= 0): ";
+                                cout << activationLayerSize[i1] << " ";
+                            }
 
                             modelValid = 0;
                         }
                     } // for (int i1 = 0; i1 < numActivationLayers; i1++) 
                     if (numInvalidLayers > 0) cout << endl;  
+                    break;
                 }
-                break;
 
                 case 2:     // isTraining  
                 {
@@ -415,8 +416,8 @@ struct NeuralNetwork
                         cout << "ERROR: isTraining should be 0 (testing) or 1 (training)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 3:     // numClasses
                 {
@@ -428,8 +429,8 @@ struct NeuralNetwork
                     }
 
                     numInEachClass = new int[numClasses];
+                    break;
                 }
-                break;
                 
                 case 4:     // thresholdFunctionType
                 {
@@ -454,8 +455,8 @@ struct NeuralNetwork
                         cout << "ERROR: Threshold function type is invalid, can only be 0 (sigmoid) or 1 (tanh) opr 2 (relu)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 5:     // loadWeights
                 {
@@ -465,8 +466,8 @@ struct NeuralNetwork
                         cout << "ERROR: loadWeights should be 0 (randomize) or 1 (load)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 6:     // saveModel
                 {
@@ -476,8 +477,8 @@ struct NeuralNetwork
                         cout << "ERROR: saveModel should be 0 (don't save) or 1 (save)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 7:     // wb
                 {
@@ -488,8 +489,8 @@ struct NeuralNetwork
                         cout << "ERROR: Lower bound for weights must be <= upper bound for weights" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 8:     // lambda
                 {
@@ -499,8 +500,8 @@ struct NeuralNetwork
                         cout << "ERROR: lambda must be positive" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 9:     // maxIterations
                 {
@@ -510,8 +511,8 @@ struct NeuralNetwork
                         cout << "ERROR: Model must run for positive number of iterations." << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 10:    // errorThreshold
                 {
@@ -521,8 +522,8 @@ struct NeuralNetwork
                         cout << "ERROR: Must have positive error threshold." << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 11:    // iterationPrintingFrequency
                 {
@@ -532,8 +533,8 @@ struct NeuralNetwork
                         cout << "ERROR: iteration printing frequency must be > 0." << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 12:    // printWeights
                 {
@@ -543,20 +544,20 @@ struct NeuralNetwork
                         cout << "ERROR: printWeights should be 0 (don't print) or 1 (print)" << endl;
                         printWeights = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 13:    // problem
                 {
                     getline(fin, problem);
+                    break;
                 }
-                break;
                 
                 case 14:    // weights file
                 {
                     getline(fin, weightsFile);
+                    break;
                 }
-                break;
                 
                 case 15:    // printTruthTable
                 {
@@ -566,8 +567,8 @@ struct NeuralNetwork
                         cout << "ERROR: willPrintTruthTable should be 0 (dont print) or 1 (print)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
 
                 case 16:    // earlyStoppingCycles
                 {
@@ -577,8 +578,8 @@ struct NeuralNetwork
                         cout << "ERROR: Invalid number of early stopping rate (<= 0)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
                 
                 case 17:    // earlyStoppingThreshold
                 {
@@ -588,8 +589,8 @@ struct NeuralNetwork
                         cout << "ERROR: Invalid number early stopping threshold (<= 0)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
                 
                 case 18:    // beta1
                 {
@@ -599,8 +600,8 @@ struct NeuralNetwork
                         cout << "ERROR: Invalid number early stopping threshold (<= 0)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
                 
                 case 19:    // beta2
                 {
@@ -610,8 +611,8 @@ struct NeuralNetwork
                         cout << "ERROR: Invalid number early stopping threshold (<= 0)" << endl;
                         modelValid = 0;
                     }
+                    break;
                 }
-                break;
                 
                 case 20:    // numInEachClass
                 {
@@ -627,11 +628,11 @@ struct NeuralNetwork
 
                         numTests += numInEachClass[i1];
                     }
+                    break;
                 }
-                break;
 
                 default:
-                cout << "ERROR: " << param << " is not a parameter" << endl;
+                    cout << "ERROR: " << param << " is not a parameter" << endl;
             } // switch (val)
         } // while (!fin.eof())
 
@@ -671,15 +672,12 @@ struct NeuralNetwork
             cout << "lambda is " << lambda << " with beta1 and beta2 being " << beta1 << " " << beta2 << endl;
 
             cout << "Early stopping activates when error does not improve by "
-                << earlyStoppingThreshold << " after " << earlyStoppingCycles << " epochs" << endl;
+                 << earlyStoppingThreshold << " after " << earlyStoppingCycles << " epochs" << endl;
 
             cout << "The model will stop when it reached " << maxIterations
-                << " iterations or reaches a error lower than " << errorThreshold << endl;
+                 << " iterations or reaches a error lower than " << errorThreshold << endl;
         } // if (isTraining)
-        else 
-        {
-            cout << "Weights will be read from " << weightsFile << endl;
-        }
+        else cout << "Weights will be read from " << weightsFile << endl;
         cout << endl;
         
         return;
@@ -880,9 +878,7 @@ struct NeuralNetwork
                     fin >> inputValues[tc][m];
 
                 for (int i = 0; i < activationLayerSize[outputLayer]; i++)
-                    if (i == number) {
-                        trueValues[tc][i] = 1.0;
-                    }
+                    if (i == number) trueValues[tc][i] = 1.0;
                     else trueValues[tc][i] = 0.0;
                 
                 tc++;
