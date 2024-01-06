@@ -27,7 +27,7 @@ PARAM: numInEachClass
 1
 
 PARAM: thresholdFunctionType
-0
+2
 
 PARAM: problem
 Digit Classification/Test/

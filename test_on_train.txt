@@ -27,10 +27,10 @@ PARAM: numInEachClass
 5
 
 PARAM: thresholdFunctionType
-0
+2
 
 PARAM: problem
 Digit Classification/Train/
 
 PARAM: weightsFile
-final_weights.txt
+trained_model.txt

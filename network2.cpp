@@ -80,11 +80,12 @@ double tanhDerivative(double val)
 } // double sigmoidDerivative(double val)
 double relu(double val) 
 {
-    return max(val, 0.0);
+    if (val > 0.0) return val;
+    else return 0.1 * val;
 }
 double reluDerivative(double val) 
 {
-    return (val > 0.0 ? 1.0 : 0.0);
+    return (val > 0.0 ? 1.0 : 0.1);
 } // double sigmoidDerivative(double val)
 
 /*
@@ -766,7 +767,7 @@ struct NeuralNetwork
     */
     void initializeArrays() 
     {
-        for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
+        for (int i1 = 0; i1 < outputLayer; i1++) 
             for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
                 for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
                     weights[i1][i2][i3] = genRand();
@@ -894,8 +895,12 @@ struct NeuralNetwork
     double error(int testCase) 
     {
         double err = 0.0;
-        for (int i = 0; i < activationLayerSize[outputLayer]; i++)
+        for (int i = 0; i < activationLayerSize[outputLayer]; i++) 
+        {
             err += trueValues[testCase][i] * log(softmaxLayer[i]);
+            // cout << activations[outputLayer][i] << " ";
+        }
+        // cout << endl;
         
         return -err;
     } // double error(int testCase)
@@ -908,24 +913,30 @@ struct NeuralNetwork
         for (int b = 0; b < activationLayerSize[INPUT_LAYER]; b++)
             activations[INPUT_LAYER][b] = inputValues[testCase][b];
 
+        double theta;
         for (int a = FIRST_HIDDEN_LAYER; a <= outputLayer; a++) 
         {
             for (int b = 0; b < activationLayerSize[a]; b++)
             {
-                theta[a][b] = 0.0;
+                theta = 0.0;
                 for (int c = 0; c < activationLayerSize[a - 1]; c++)
-                    theta[a][b] += activations[a - 1][c] * weights[a - 1][c][b];
+                    theta += activations[a - 1][c] * weights[a - 1][c][b];
                 
-                activations[a][b] = thresholdFunction(theta[a][b]);
+                activations[a][b] = thresholdFunction(theta);
             }
         } // for (int a = FIRST_HIDDEN_LAYER; a <= lastHiddenLayer; a++) 
 
-        double actiSum = 0.0;
+        double maxv = -INF;
         for (int a = 0; a < activationLayerSize[outputLayer]; a++) 
-            actiSum += exp(activations[outputLayer][a]);
+            maxv = max(maxv, activations[outputLayer][a]);
+        
+        double sum = 0.0;
+        for (int a = 0; a < activationLayerSize[outputLayer]; a++) 
+            sum += exp(activations[outputLayer][a] - maxv);
 
+        double offset = maxv + log(sum);
         for (int a = 0; a < activationLayerSize[outputLayer]; a++)
-            softmaxLayer[a] = exp(activations[outputLayer][a]) / actiSum;
+            softmaxLayer[a] = exp(activations[outputLayer][a] - offset);
 
         return;
     } // void forwardPassEvaluate(int testCase)
@@ -945,21 +956,26 @@ struct NeuralNetwork
             for (int b = 0; b < activationLayerSize[a]; b++)
             {
                 theta[a][b] = 0.0;
-                for (int c = 0; c < activationLayerSize[a - 1]; c++)
+                for (int c = 0; c < activationLayerSize[a - 1]; c++) 
                     theta[a][b] += activations[a - 1][c] * weights[a - 1][c][b];
                 
                 activations[a][b] = thresholdFunction(theta[a][b]);
             }
         } // for (int a = FIRST_HIDDEN_LAYER; a <= lastHiddenLayer; a++) 
 
-        double actiSum = 0.0;
+        double maxv = -INF;
         for (int a = 0; a < activationLayerSize[outputLayer]; a++) 
-            actiSum += exp(activations[outputLayer][a]);
+            maxv = max(maxv, activations[outputLayer][a]);
+        
+        double sum = 0.0;
+        for (int a = 0; a < activationLayerSize[outputLayer]; a++) 
+            sum += exp(activations[outputLayer][a] - maxv);
 
+        double offset = maxv + log(sum);
         for (int a = 0; a < activationLayerSize[outputLayer]; a++)
         {
-            softmaxLayer[a] = exp(activations[outputLayer][a]) / actiSum;
-            psi[outputLayer][a] = (trueValues[testCase][a] - softmaxLayer[a]);
+            softmaxLayer[a] = exp(activations[outputLayer][a] - offset);
+            psi[outputLayer][a] = softmaxLayer[a] - trueValues[testCase][a];
         }
 
         return;
@@ -967,11 +983,6 @@ struct NeuralNetwork
 
     void printResults(int testCase)
     {
-        // for (int m = 0; m < activationLayerSize[INPUT_LAYER]; m++) 
-        //    cout << activations[INPUT_LAYER][m] << " ";
-        
-        // cout << "| ";
-
         for (int i = 0; i < activationLayerSize[outputLayer]; i++) 
             cout << softmaxLayer[i] << " ";
 
@@ -1028,7 +1039,7 @@ struct NeuralNetwork
                 for (int c = 0; c < activationLayerSize[a + 1]; c++)
                 {
                     omega[a][b] += psi[a + 1][c] * weights[a][b][c];
-                    g = -activations[a][b] * psi[a + 1][c];
+                    g = activations[a][b] * psi[a + 1][c];
                     m1[a][b][c] = beta1 * m1[a][b][c] + (1.0 - beta1) * g;
                     m2[a][b][c] = beta2 * m2[a][b][c] + (1.0 - beta2) * g * g;
                     weights[a][b][c] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m1[a][b][c] / (sqrt(m2[a][b][c]) + 1e-8);
@@ -1044,7 +1055,7 @@ struct NeuralNetwork
             for (int c = 0; c < activationLayerSize[FIRST_HIDDEN_LAYER + 1]; c++)
             {
                 omega[FIRST_HIDDEN_LAYER][b] += psi[FIRST_HIDDEN_LAYER + 1][c] * weights[FIRST_HIDDEN_LAYER][b][c];
-                g = -activations[FIRST_HIDDEN_LAYER][b] * psi[FIRST_HIDDEN_LAYER + 1][c];
+                g = activations[FIRST_HIDDEN_LAYER][b] * psi[FIRST_HIDDEN_LAYER + 1][c];
                 m1[FIRST_HIDDEN_LAYER][b][c] = beta1 * m1[FIRST_HIDDEN_LAYER][b][c] + (1.0 - beta1) * g;
                 m2[FIRST_HIDDEN_LAYER][b][c] = beta2 * m2[FIRST_HIDDEN_LAYER][b][c] + (1.0 - beta2) * g * g;
                 weights[FIRST_HIDDEN_LAYER][b][c] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * 
@@ -1055,7 +1066,7 @@ struct NeuralNetwork
 
             for (int c = 0; c < activationLayerSize[INPUT_LAYER]; c++)
             {
-                g = -activations[INPUT_LAYER][c] * psi[FIRST_HIDDEN_LAYER][b];
+                g = activations[INPUT_LAYER][c] * psi[FIRST_HIDDEN_LAYER][b];
                 m1[INPUT_LAYER][c][b] = beta1 * m1[INPUT_LAYER][c][b] + (1.0 - beta1) * g;
                 m2[INPUT_LAYER][c][b] = beta2 * m2[INPUT_LAYER][c][b] + (1.0 - beta2) * g * g;
                 weights[INPUT_LAYER][c][b] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * 
