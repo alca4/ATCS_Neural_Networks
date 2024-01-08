@@ -27,8 +27,8 @@ PARAM: numInEachClass
 5
 
 PARAM: wb
--0.5
-0.5
+-.03
+.03
 
 PARAM: lambda
 1e-3

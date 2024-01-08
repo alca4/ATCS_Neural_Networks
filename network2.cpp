@@ -767,7 +767,7 @@ struct NeuralNetwork
     */
     void initializeArrays() 
     {
-        for (int i1 = 0; i1 < outputLayer; i1++) 
+        for (int i1 = INPUT_LAYER; i1 < outputLayer; i1++) 
             for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
                 for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
                     weights[i1][i2][i3] = genRand();
@@ -818,17 +818,17 @@ struct NeuralNetwork
 
     void printModelWeights() 
     {
-        cout << "Weights:" << endl;
-        for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
-        {
-            cout << "From activation layer " << i1 << " to " << i1 + 1 << endl;
-            for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
-            {
-                for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
-                    cout << weights[i1][i2][i3] << "\t";
-                cout << endl;
-            }
-        } // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
+        // cout << "Weights:" << endl;
+        // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
+        // {
+        //     cout << "From activation layer " << i1 << " to " << i1 + 1 << endl;
+        //     for (int i2 = 0; i2 < activationLayerSize[i1]; i2++) 
+        //     {
+        //         for (int i3 = 0; i3 < activationLayerSize[i1 + 1]; i3++) 
+        //             cout << weights[i1][i2][i3] << "\t";
+        //         cout << endl;
+        //     }
+        // } // for (int i1 = 0; i1 < numActivationLayers - 1; i1++) 
 
         return;
     } // void printModelWeights()
@@ -896,11 +896,7 @@ struct NeuralNetwork
     {
         double err = 0.0;
         for (int i = 0; i < activationLayerSize[outputLayer]; i++) 
-        {
             err += trueValues[testCase][i] * log(softmaxLayer[i]);
-            // cout << activations[outputLayer][i] << " ";
-        }
-        // cout << endl;
         
         return -err;
     } // double error(int testCase)
@@ -920,7 +916,7 @@ struct NeuralNetwork
             {
                 theta = 0.0;
                 for (int c = 0; c < activationLayerSize[a - 1]; c++)
-                    theta += activations[a - 1][c] * weights[a - 1][c][b];
+                    theta += activations[a - 1][c] * weights[a - 1][c][b] * 0.5;
                 
                 activations[a][b] = thresholdFunction(theta);
             }
@@ -1049,28 +1045,27 @@ struct NeuralNetwork
             } // for (int b = 0; b < activationLayerSize[a]; b++)
         } // for (int a = lastHiddenLayer; a > FIRST_HIDDEN_LAYER; a--) 
         
-        for (int b = 0; b < activationLayerSize[FIRST_HIDDEN_LAYER]; b++)
+        int a = FIRST_HIDDEN_LAYER, d = INPUT_LAYER;
+        for (int b = 0; b < activationLayerSize[a]; b++)
         {
-            omega[FIRST_HIDDEN_LAYER][b] = 0.0;
-            for (int c = 0; c < activationLayerSize[FIRST_HIDDEN_LAYER + 1]; c++)
+            omega[a][b] = 0.0;
+            for (int c = 0; c < activationLayerSize[a + 1]; c++)
             {
-                omega[FIRST_HIDDEN_LAYER][b] += psi[FIRST_HIDDEN_LAYER + 1][c] * weights[FIRST_HIDDEN_LAYER][b][c];
-                g = activations[FIRST_HIDDEN_LAYER][b] * psi[FIRST_HIDDEN_LAYER + 1][c];
-                m1[FIRST_HIDDEN_LAYER][b][c] = beta1 * m1[FIRST_HIDDEN_LAYER][b][c] + (1.0 - beta1) * g;
-                m2[FIRST_HIDDEN_LAYER][b][c] = beta2 * m2[FIRST_HIDDEN_LAYER][b][c] + (1.0 - beta2) * g * g;
-                weights[FIRST_HIDDEN_LAYER][b][c] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * 
-                                                     m1[FIRST_HIDDEN_LAYER][b][c] / (sqrt(m2[FIRST_HIDDEN_LAYER][b][c]) + 1e-8);
+                omega[a][b] += psi[a + 1][c] * weights[a][b][c];
+                g = activations[a][b] * psi[a + 1][c];
+                m1[a][b][c] = beta1 * m1[a][b][c] + (1.0 - beta1) * g;
+                m2[a][b][c] = beta2 * m2[a][b][c] + (1.0 - beta2) * g * g;
+                weights[a][b][c] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m1[a][b][c] / (sqrt(m2[a][b][c]) + 1e-8);
             } // for (int c = 0; c < activationLayerSize[FIRST_HIDDEN_LAYER + 1]; c++)
 
-            psi[FIRST_HIDDEN_LAYER][b] = omega[FIRST_HIDDEN_LAYER][b] * thresholdFunctionDerivative(theta[FIRST_HIDDEN_LAYER][b]);
+            psi[a][b] = omega[a][b] * thresholdFunctionDerivative(theta[a][b]);
 
-            for (int c = 0; c < activationLayerSize[INPUT_LAYER]; c++)
+            for (int c = 0; c < activationLayerSize[d]; c++)
             {
-                g = activations[INPUT_LAYER][c] * psi[FIRST_HIDDEN_LAYER][b];
-                m1[INPUT_LAYER][c][b] = beta1 * m1[INPUT_LAYER][c][b] + (1.0 - beta1) * g;
-                m2[INPUT_LAYER][c][b] = beta2 * m2[INPUT_LAYER][c][b] + (1.0 - beta2) * g * g;
-                weights[INPUT_LAYER][c][b] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * 
-                                              m1[INPUT_LAYER][c][b] / (sqrt(m2[INPUT_LAYER][c][b]) + 1e-8);
+                g = activations[d][c] * psi[a][b];
+                m1[d][c][b] = beta1 * m1[d][c][b] + (1.0 - beta1) * g;
+                m2[d][c][b] = beta2 * m2[d][c][b] + (1.0 - beta2) * g * g;
+                weights[d][c][b] -= lambda * sqrt(1.0 - powBeta2T) / (1.0 - powBeta1T) * m1[d][c][b] / (sqrt(m2[d][c][b]) + 1e-8);
             } // for (int c = 0; c < activationLayerSize[INPUT_LAYER]; c++)
         } // for (int b = 0; b < activationLayerSize[FIRST_HIDDEN_LAYER]; b++)
 
