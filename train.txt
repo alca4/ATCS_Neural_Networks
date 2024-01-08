@@ -11,7 +11,7 @@ PARAM: isTraining
 1
 
 PARAM: loadWeights
-0
+1
 
 PARAM: saveModel
 1
@@ -27,30 +27,24 @@ PARAM: numInEachClass
 5
 
 PARAM: wb
--.03
-.03
+-1.5
+1.5
 
 PARAM: lambda
-1e-3
-
-PARAM: beta1
-.9
-
-PARAM: beta2
-.999
+1e-2
 
 /*
 * 0: sigmoid function
 * 1: tanh function
 */
 PARAM: thresholdFunctionType
-2
+0
 
 PARAM: maxIterations
 1000000000
 
 PARAM: errorThreshold
-2e-3
+5e-3
 
 PARAM: iterationPrintingFrequency
 1
@@ -62,13 +56,7 @@ PARAM: problem
 Digit Classification/Train/
 
 PARAM: weightsFile
-trained_model.txt
+final_weights.txt
 
 PARAM: willPrintTruthTable
 0
-
-PARAM: earlyStoppingCycles
-1000000000
-
-PARAM: earlyStoppingThreshold
-1e-18
