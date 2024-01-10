@@ -11,7 +11,7 @@ PARAM: isTraining
 1
 
 PARAM: loadWeights
-1
+0
 
 PARAM: saveModel
 1
@@ -56,7 +56,7 @@ PARAM: problem
 Digit Classification/Train/
 
 PARAM: weightsFile
-final_weights.txt
+trained_model.txt
 
 PARAM: willPrintTruthTable
 0

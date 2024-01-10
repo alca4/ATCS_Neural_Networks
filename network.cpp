@@ -834,7 +834,7 @@ struct NeuralNetwork
             {
                 theta = 0.0;
                 for (int c = 0; c < activationLayerSize[a - 1]; c++)
-                    theta += activations[a - 1][c] * weights[a - 1][c][b] * 0.5;
+                    theta += activations[a - 1][c] * weights[a - 1][c][b];
                 
                 activations[a][b] = thresholdFunction(theta);
             }
@@ -939,7 +939,7 @@ struct NeuralNetwork
                 for (int c = 0; c < activationLayerSize[a + 1]; c++)
                 {
                     omega[a][b] += psi[a + 1][c] * weights[a][b][c];
-                    weights[a][b][c] -= lambda * activations[a][b] * psi[a + 1][c];
+                    weights[a][b][c] += lambda * activations[a][b] * psi[a + 1][c];
                 } // for (int c = 0; c < activationLayerSize[a + 1]; c++)
 
                 psi[a][b] = omega[a][b] * thresholdFunctionDerivative(theta[a][b]);
@@ -953,13 +953,13 @@ struct NeuralNetwork
             for (int c = 0; c < activationLayerSize[a + 1]; c++)
             {
                 omega[a][b] += psi[a + 1][c] * weights[a][b][c];
-                weights[a][b][c] -= lambda * activations[a][b] * psi[a + 1][c];
+                weights[a][b][c] += lambda * activations[a][b] * psi[a + 1][c];
             } // for (int c = 0; c < activationLayerSize[FIRST_HIDDEN_LAYER + 1]; c++)
 
             psi[a][b] = omega[a][b] * thresholdFunctionDerivative(theta[a][b]);
 
             for (int c = 0; c < activationLayerSize[d]; c++)
-                weights[d][c][b] -= lambda * activations[d][c] * psi[a][b];
+                weights[d][c][b] += lambda * activations[d][c] * psi[a][b];
         } // for (int b = 0; b < activationLayerSize[FIRST_HIDDEN_LAYER]; b++)
 
         return;
