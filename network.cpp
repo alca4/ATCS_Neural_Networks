@@ -874,8 +874,8 @@ struct NeuralNetwork
             
             activations[a][b] = thresholdFunction(theta[a][b]);
 
-            psi[outputLayer][a] = (trueValues[testCase][b] - activations[outputLayer][b]) *
-                                  thresholdFunctionDerivative(theta[outputLayer][b]);
+            psi[a][b] = (trueValues[testCase][b] - activations[a][b]) *
+                         thresholdFunctionDerivative(theta[a][b]);
         }
 
         return;
@@ -972,15 +972,10 @@ struct NeuralNetwork
     */
     void train()
     {
-        double lastCycleError = INF;
         double avgError = 0.0;
         int iterations = 0;
-        bool willPrint;
-
-        int lastImprovementCycle = 0;
         do 
         {
-            willPrint = false;
             for (int testCase = 0; testCase < numTests; testCase++)
             {
                 forwardPassTrain(testCase);
@@ -988,17 +983,12 @@ struct NeuralNetwork
             }
 
             iterations++;
-
-            if (iterations % 10 == 0) willPrint = true;
-            if (iterations % 100 == 0 && saveModel) saveWeightsToFile();
             if (iterations % iterationPrintingFrequency == 0) 
             {
-                avgError = calculateAverageError(willPrint);
+                avgError = calculateAverageError(false);
                 cout << "Iteration: " << iterations << "\t";
-                cout << "Error: " << avgError << "\t";
-                cout << endl;
+                cout << "Error: " << avgError << endl;
             }
-            else avgError = calculateAverageError(willPrint);
         } // do
         while (iterations < maxIterations && avgError - errorThreshold > EPSILON);
 

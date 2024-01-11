@@ -3,7 +3,7 @@ PARAM: numActivationLayers
 
 PARAM: activationLayerSizes
 28224
-576
+16
 16
 5
 
@@ -33,4 +33,4 @@ PARAM: problem
 Digit Classification/Test/
 
 PARAM: weightsFile
-final_weights.txt
+trained_model.txt

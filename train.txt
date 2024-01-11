@@ -3,7 +3,7 @@ PARAM: numActivationLayers
 
 PARAM: activationLayerSizes
 28224
-576
+16
 16
 5
 
@@ -31,7 +31,7 @@ PARAM: wb
 1.5
 
 PARAM: lambda
-1e-2
+0.1
 
 /*
 * 0: sigmoid function
@@ -44,7 +44,7 @@ PARAM: maxIterations
 1000000000
 
 PARAM: errorThreshold
-5e-3
+5e-5
 
 PARAM: iterationPrintingFrequency
 1
