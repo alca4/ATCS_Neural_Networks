@@ -981,11 +981,12 @@ struct NeuralNetwork
                 forwardPassTrain(testCase);
                 learn();
             }
+            
+            avgError = calculateAverageError(false);
 
             iterations++;
             if (iterations % iterationPrintingFrequency == 0) 
             {
-                avgError = calculateAverageError(false);
                 cout << "Iteration: " << iterations << "\t";
                 cout << "Error: " << avgError << endl;
             }

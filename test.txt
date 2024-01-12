@@ -20,17 +20,17 @@ PARAM: numClasses
 5
 
 PARAM: numInEachClass
-5
-5
-5
-5
-5
+1
+1
+1
+1
+1
 
 PARAM: thresholdFunctionType
 0
 
 PARAM: problem
-Digit Classification/Train/
+Digit Classification/Test/
 
 PARAM: weightsFile
 final_weights.txt

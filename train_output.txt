@@ -1,0 +1,20 @@
+########################################
+Attempting to configure model from file 'train.txt'
+
+ERROR:  is not a parameter
+Model configured successfully!
+Memory allocated
+Weights intialized!
+Printing configuration paramenters:
+
+Number of activation layers: 4
+Size of each activation layer: 28224 256 16 5 
+The threshold function used will be: sigmoid
+Current mode: training
+Number of tests: 25
+Weights will be initialized between -1 and 1
+lambda is 0.1
+The model will stop when it reached 1000000000 iterations or reaches a error lower than 0.0001
+
+Tests loaded
+Iteration: 1000	Error: 0.000767722

@@ -3,7 +3,7 @@ PARAM: numActivationLayers
 
 PARAM: activationLayerSizes
 28224
-256
+576
 16
 5
 
@@ -31,7 +31,13 @@ PARAM: wb
 1
 
 PARAM: lambda
-0.1
+1e-4
+
+PARAM: beta1
+.9
+
+PARAM: beta2
+.999
 
 /*
 * 0: sigmoid function
@@ -44,10 +50,10 @@ PARAM: maxIterations
 1000000000
 
 PARAM: errorThreshold
-1e-4
+1e-2
 
 PARAM: iterationPrintingFrequency
-1000
+1
 
 PARAM: printWeights
 0
@@ -60,3 +66,9 @@ trained_model.txt
 
 PARAM: willPrintTruthTable
 0
+
+PARAM: earlyStoppingCycles
+1000000000
+
+PARAM: earlyStoppingThreshold
+1e-18
