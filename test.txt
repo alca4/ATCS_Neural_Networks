@@ -4,7 +4,7 @@ PARAM: numActivationLayers
 PARAM: activationLayerSizes
 28224
 16
-16
+8
 5
 
 PARAM: isTraining

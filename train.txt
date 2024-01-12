@@ -3,8 +3,8 @@ PARAM: numActivationLayers
 
 PARAM: activationLayerSizes
 28224
-256
 16
+8
 5
 
 PARAM: isTraining
@@ -47,7 +47,7 @@ PARAM: errorThreshold
 1e-4
 
 PARAM: iterationPrintingFrequency
-1000
+100
 
 PARAM: printWeights
 0
